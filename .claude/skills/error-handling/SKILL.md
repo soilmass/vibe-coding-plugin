@@ -219,8 +219,182 @@ try-catch intercepts the throw and prevents Next.js from handling it.
 - [ ] External API calls use retry with exponential backoff
 - [ ] Error messages show `digest` ID (not stack traces) in production
 
+### Empty state patterns
+```tsx
+// Zero-data UI with icon, description, and CTA
+import { FileQuestion } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export function EmptyState({
+  icon: Icon = FileQuestion,
+  title,
+  description,
+  action,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <Icon className="h-12 w-12 text-muted-foreground/50" />
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+      {action && (
+        <Button asChild className="mt-4">
+          <a href={action.href}>{action.label}</a>
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// Conditional rendering when query returns empty
+export default async function ProjectsPage() {
+  const projects = await db.project.findMany({ where: { userId } });
+
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        title="No projects yet"
+        description="Get started by creating your first project."
+        action={{ label: "Create project", href: "/projects/new" }}
+      />
+    );
+  }
+
+  return <ProjectList projects={projects} />;
+}
+```
+
+### Error recovery UX
+```tsx
+"use client";
+
+import { useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, RefreshCw, Home, Mail } from "lucide-react";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+      <AlertCircle className="h-12 w-12 text-destructive" />
+      <h2 className="mt-4 text-lg font-semibold">Something went wrong</h2>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        {error.digest
+          ? `An unexpected error occurred. Reference: ${error.digest}`
+          : error.message}
+      </p>
+
+      <div className="mt-6 flex gap-3">
+        <Button
+          onClick={() => startTransition(() => reset())}
+          disabled={isPending}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          {isPending ? "Retrying..." : "Try again"}
+        </Button>
+        <Button variant="outline" asChild>
+          <a href="/"><Home className="mr-2 h-4 w-4" /> Go home</a>
+        </Button>
+        <Button variant="ghost" asChild>
+          <a href="mailto:support@example.com"><Mail className="mr-2 h-4 w-4" /> Contact support</a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// 401/403 redirect pattern
+export default async function ProtectedPage() {
+  const session = await auth();
+  if (!session) redirect("/login?callbackUrl=/protected");
+  if (session.user.role !== "admin") {
+    return (
+      <div className="py-16 text-center">
+        <h2 className="text-lg font-semibold">Access Denied</h2>
+        <p className="mt-2 text-muted-foreground">
+          You don't have permission to view this page.
+        </p>
+        <Button asChild className="mt-4">
+          <a href="/dashboard">Return to dashboard</a>
+        </Button>
+      </div>
+    );
+  }
+  return <AdminPanel />;
+}
+```
+
+### Error UX copy rules
+```tsx
+// Error messages include fix/next step, not just the problem
+// WRONG:
+<p>Invalid email</p>
+// CORRECT:
+<p>Enter a valid email like name@example.com</p>
+
+// WRONG:
+<p>Password too short</p>
+// CORRECT:
+<p>Password must be at least 8 characters</p>
+
+// WRONG:
+<p>Upload failed</p>
+// CORRECT:
+<p>Upload failed. Check your connection and try again.</p>
+
+// Specific button labels — not generic
+// WRONG:
+<button>Submit</button>
+<button>Continue</button>
+<button>OK</button>
+
+// CORRECT:
+<button>Save API Key</button>
+<button>Create Project</button>
+<button>Confirm Deletion</button>
+
+// Destructive actions need confirmation or undo — never immediate
+// Option 1: Confirmation modal
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="destructive">Delete Project</Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent>
+    <AlertDialogTitle>Delete "My Project"?</AlertDialogTitle>
+    <AlertDialogDescription>
+      This action cannot be undone. All data will be permanently deleted.
+    </AlertDialogDescription>
+    <AlertDialogAction onClick={handleDelete}>Delete Project</AlertDialogAction>
+    <AlertDialogCancel>Cancel</AlertDialogCancel>
+  </AlertDialogContent>
+</AlertDialog>
+
+// Option 2: Undo window (better UX for reversible actions)
+function handleDelete(id: string) {
+  const item = optimisticallyRemove(id);
+  toast("Item deleted", {
+    action: { label: "Undo", onClick: () => restore(item) },
+    duration: 5000,
+  });
+  // Actually delete after undo window expires
+  setTimeout(() => permanentlyDelete(id), 5000);
+}
+```
+
 ## Composes With
 - `nextjs-routing` — error files are route segment conventions
 - `react-suspense` — Suspense boundaries handle loading, error boundaries handle failures
 - `security` — error messages should not leak sensitive details
 - `logging` — errors should be logged for debugging and monitoring
+- `shadcn` — Button, icons for error recovery UI

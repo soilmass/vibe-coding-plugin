@@ -117,7 +117,327 @@ shadcn provides accessible, themed, variant-aware components. Don't rebuild them
 - [ ] `cn()` used for all conditional className merging
 - [ ] Components composed via wrapping, not direct modification
 
+### Command palette (cmdk)
+```bash
+npx shadcn@latest add command
+```
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { useRouter } from "next/navigation";
+
+export function CommandPalette() {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((prev) => !prev);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  return (
+    <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandInput placeholder="Type a command or search..." />
+      <CommandList>
+        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandGroup heading="Pages">
+          <CommandItem onSelect={() => { router.push("/dashboard"); setOpen(false); }}>
+            Dashboard
+          </CommandItem>
+          <CommandItem onSelect={() => { router.push("/settings"); setOpen(false); }}>
+            Settings
+          </CommandItem>
+        </CommandGroup>
+        <CommandGroup heading="Actions">
+          <CommandItem onSelect={() => { /* action */ setOpen(false); }}>
+            Create new project
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </CommandDialog>
+  );
+}
+```
+
+### Dialog / Sheet / Drawer patterns
+```tsx
+// Confirmation dialog with AlertDialog
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+export function DeleteConfirmation({ onConfirm }: { onConfirm: () => void }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive">Delete</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+// Sheet as mobile navigation
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+export function MobileNav() {
+  return (
+    <Sheet>
+      <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu /></Button></SheetTrigger>
+      <SheetContent side="left">
+        <nav>{/* nav links */}</nav>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// Drawer bottom sheet (mobile-friendly)
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+
+export function MobileDrawer() {
+  return (
+    <Drawer>
+      <DrawerTrigger asChild><Button>Open</Button></DrawerTrigger>
+      <DrawerContent>
+        <div className="p-4">{/* content */}</div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+```
+
+### Sonner toast
+```bash
+npx shadcn@latest add sonner
+```
+
+```tsx
+// Add Toaster to root layout
+import { Toaster } from "@/components/ui/sonner";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html><body>{children}<Toaster /></body></html>
+  );
+}
+
+// Use toast anywhere
+import { toast } from "sonner";
+
+// After Server Action
+toast.success("Changes saved");
+toast.error("Something went wrong");
+toast("Item deleted", {
+  action: { label: "Undo", onClick: () => undoDelete() },
+});
+```
+
+### Icon strategy (Lucide React)
+```tsx
+// Lucide is the default icon library with shadcn
+import { Search, Settings, ChevronDown } from "lucide-react";
+
+// Icons are tree-shaken — only imported icons are bundled
+// Consistent sizing: use className for size
+<Search className="h-4 w-4" />
+<Settings className="h-5 w-5" />
+
+// Custom icon wrapper for consistency
+export function Icon({
+  icon: IconComponent,
+  size = "sm",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  size?: "sm" | "md" | "lg";
+}) {
+  const sizeClasses = { sm: "h-4 w-4", md: "h-5 w-5", lg: "h-6 w-6" };
+  return <IconComponent className={sizeClasses[size]} />;
+}
+```
+
+### Premium Component Variants
+
+#### GlassCard
+```tsx
+import { cn } from "@/lib/utils";
+
+export function GlassCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-white/20 bg-white/80 p-6 shadow-xl backdrop-blur-xl",
+        "dark:border-white/10 dark:bg-white/5",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+```
+
+#### GradientButton
+```tsx
+import { cn } from "@/lib/utils";
+import { Button, type ButtonProps } from "@/components/ui/button";
+
+export function GradientButton({ className, children, ...props }: ButtonProps) {
+  return (
+    <Button
+      className={cn(
+        "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg shadow-brand-500/25",
+        "hover:from-brand-600 hover:to-brand-700 hover:shadow-brand-500/30",
+        "active:shadow-brand-500/20",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </Button>
+  );
+}
+```
+
+#### StatCard
+```tsx
+import { cn } from "@/lib/utils";
+import { ArrowUp, ArrowDown } from "lucide-react";
+
+export function StatCard({
+  label,
+  value,
+  change,
+  trend,
+}: {
+  label: string;
+  value: string;
+  change: string;
+  trend: "up" | "down";
+}) {
+  return (
+    <div className="rounded-xl border bg-card p-6">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight">{value}</p>
+      <div className="mt-2 flex items-center gap-1 text-sm">
+        {trend === "up" ? (
+          <ArrowUp className="h-4 w-4 text-green-500" />
+        ) : (
+          <ArrowDown className="h-4 w-4 text-red-500" />
+        )}
+        <span className={cn(trend === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
+          {change}
+        </span>
+      </div>
+    </div>
+  );
+}
+```
+
+#### FeatureCard
+```tsx
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+
+export function FeatureCard({
+  icon: Icon,
+  title,
+  description,
+  className,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "group rounded-2xl border bg-card p-6 transition-all",
+        "hover:border-brand-500/20 hover:shadow-lg",
+        className
+      )}
+    >
+      <div className="mb-4 inline-flex rounded-xl bg-brand-500/10 p-3">
+        <Icon className="h-6 w-6 text-brand-500" />
+      </div>
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+```
+
+#### AvatarGroup
+```tsx
+import { cn } from "@/lib/utils";
+
+export function AvatarGroup({
+  avatars,
+  max = 4,
+}: {
+  avatars: { src: string; alt: string }[];
+  max?: number;
+}) {
+  const visible = avatars.slice(0, max);
+  const overflow = avatars.length - max;
+
+  return (
+    <div className="flex -space-x-3">
+      {visible.map((avatar, i) => (
+        <img
+          key={i}
+          src={avatar.src}
+          alt={avatar.alt}
+          className="h-10 w-10 rounded-full ring-2 ring-background"
+        />
+      ))}
+      {overflow > 0 && (
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted ring-2 ring-background">
+          <span className="text-xs font-medium">+{overflow}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `tailwind-v4` — theming via CSS custom properties
 - `react-forms` — shadcn Form component wraps react-hook-form
 - `react-client-components` — shadcn components are client components
+- `dark-mode` — shadcn uses semantic color tokens that auto-switch
+- `visual-design` — color harmony, elevation, spacing tokens
+- `landing-patterns` — premium variants used in marketing pages

@@ -176,7 +176,78 @@ export default async function UserProfile() {
 - [ ] Context providers placed at the lowest necessary level
 - [ ] No `useEffect` for data fetching (Server Components instead)
 
+### SWR deduplication
+```tsx
+"use client";
+import useSWR from "swr";
+
+// Multiple components using the same key = ONE network request
+// SWR deduplicates automatically by cache key
+function UserAvatar() {
+  const { data } = useSWR("/api/user", fetcher);
+  return <img src={data?.avatar} />;
+}
+
+function UserName() {
+  const { data } = useSWR("/api/user", fetcher); // Same key — no extra request
+  return <span>{data?.name}</span>;
+}
+```
+
+### localStorage schema versioning
+```tsx
+"use client";
+
+const STORAGE_VERSION = 2;
+const STORAGE_KEY = "app-preferences";
+
+type Preferences = { theme: string; sidebarOpen: boolean };
+
+function loadPreferences(): Preferences {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return { theme: "system", sidebarOpen: true };
+
+  const parsed = JSON.parse(raw);
+  if (parsed._version !== STORAGE_VERSION) {
+    // Migration: reset to defaults on version bump
+    localStorage.removeItem(STORAGE_KEY);
+    return { theme: "system", sidebarOpen: true };
+  }
+  return parsed.data;
+}
+
+function savePreferences(prefs: Preferences) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ _version: STORAGE_VERSION, data: prefs })
+  );
+}
+```
+
+Minimize what you store — only persist what can't be derived. Version the schema so
+old data doesn't crash the app after updates.
+
+### Deep-link all stateful UI
+```tsx
+// If it uses useState, consider URL sync via nuqs
+// Filters, pagination, modal open state, active tabs — all deep-linkable
+"use client";
+import { useQueryState, parseAsInteger, parseAsBoolean } from "nuqs";
+
+export function ProductPage() {
+  const [tab, setTab] = useQueryState("tab", { defaultValue: "details" });
+  const [page, setPage] = useQueryState("page", parseAsInteger.withDefault(1));
+  const [showFilters, setShowFilters] = useQueryState("filters", parseAsBoolean.withDefault(false));
+
+  // URL: /products?tab=reviews&page=2&filters=true
+  // Users can share, bookmark, and use browser back/forward
+}
+```
+
+Rule: if a piece of UI state would be useful in a shared link, put it in the URL.
+
 ## Composes With
 - `react-server-components` — server-first data fetching replaces client stores
 - `react-forms` — form state with `useActionState`
 - `nextjs-routing` — URL state syncs with route params
+- `composition-patterns` — context patterns for shared component state

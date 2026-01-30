@@ -108,8 +108,61 @@ export function Modal({ open, onClose, children }: {
 - [ ] Loading states announced with `aria-busy`
 - [ ] Color is not the sole means of conveying information
 
+### Focus & interaction states
+```tsx
+// focus-visible:ring-* on ALL interactive elements
+<button className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+  Click me
+</button>
+
+// NEVER outline-none without focus replacement
+// WRONG:
+<button className="outline-none">No focus indicator!</button>
+// CORRECT:
+<button className="outline-none focus-visible:ring-2 focus-visible:ring-ring">
+  Custom focus ring
+</button>
+
+// Prefer :focus-visible over :focus (avoids ring on mouse click)
+// :focus — shows ring on click AND keyboard
+// :focus-visible — shows ring on keyboard only (what users expect)
+
+// :focus-within for compound controls
+<div className="focus-within:ring-2 focus-within:ring-ring rounded-md">
+  <input className="outline-none" />
+  <button className="outline-none">Search</button>
+</div>
+
+// Decorative icons need aria-hidden
+<button>
+  <SearchIcon aria-hidden="true" />
+  <span>Search</span>
+</button>
+
+// Icon-only buttons need aria-label
+<button aria-label="Search">
+  <SearchIcon aria-hidden="true" />
+</button>
+
+// aria-live for async updates (toasts, validation, loading)
+<div aria-live="polite" aria-atomic="true">
+  {validationMessage}
+</div>
+
+// scroll-margin-top for anchor targets with fixed headers
+<h2 id="section-1" className="scroll-mt-20">Section 1</h2>
+// Ensures anchor scroll doesn't hide content behind sticky header
+
+// Contrast progression: rest → hover → active → focus (each more prominent)
+// rest:     text-muted-foreground
+// hover:    text-foreground
+// active:   text-foreground font-medium
+// focus:    text-foreground ring-2 ring-ring
+```
+
 ## Composes With
 - `react-client-components` — a11y attributes on interactive client components
 - `shadcn` — shadcn/ui components are accessible by default
 - `react-forms` — form error announcements and validation
 - `storybook` — per-component a11y auditing
+- `animation` — respect prefers-reduced-motion

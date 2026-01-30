@@ -1,7 +1,7 @@
 ---
 name: flow
 description: >
-  Workflow pipeline orchestrator — chains skills in predefined sequences for 29 pipelines including build, feature, harden, ship, audit, refactor, i18n, a11y, migration, seo, full-audit, observe, full-feature, resilience, gdpr, api-first, b2b-saas, content-site, search-notify, mobile-first, design-system, perf-audit, bundle-optimize, and docs-sprint workflows
+  Workflow pipeline orchestrator — chains skills in predefined sequences for 32 pipelines including build, feature, harden, ship, audit, refactor, i18n, a11y, migration, seo, full-audit, observe, full-feature, resilience, gdpr, api-first, b2b-saas, content-site, search-notify, mobile-first, design-system, perf-audit, bundle-optimize, docs-sprint, ui-polish, landing-polish, and interactive-feature workflows
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -21,7 +21,7 @@ development workflows end-to-end. The ONE orchestrator for structured multi-skil
 - Accessibility pass (accessibility → shadcn → forms → testing)
 - Database migration workflow (prisma → database-seeding → testing)
 - SEO optimization (nextjs-metadata → seo-advanced → i18n → performance)
-- Full audit (up to 15 auditor agents, 2 conditional)
+- Full audit (up to 17 auditor agents, 2 conditional)
 - Observability stack (logging → analytics → error-handling → performance)
 - Full feature with observability (routing → components → forms → actions → logging → testing)
 - Resilience setup (observability → error-handling → logging → testing)
@@ -44,7 +44,7 @@ development workflows end-to-end. The ONE orchestrator for structured multi-skil
 |----------|-------|-------------|
 | `build` | `env-validation` → `scaffold` → `prisma` → `database-seeding` → `auth` → `logging` → `shadcn` | Full project setup from zero |
 | `feature` | `nextjs-routing` → `react-server-components` → `react-forms` → `react-server-actions` | Complete feature with UI and data |
-| `harden` | `security` → `rate-limiting` → `accessibility` → `performance` → `observability` → `error-handling` → `caching` → `testing` | Production readiness hardening |
+| `harden` | `security` → `secrets-management` → `rate-limiting` → `accessibility` → `performance` → `observability` → `error-handling` → `caching` → `testing` | Production readiness hardening |
 | `ship` | `testing` → `performance` → `deploy` | Test, verify perf, deploy |
 | `audit` | `typescript-patterns` → `security` → `caching` | Code quality and security review |
 | `refactor` | `react-server-components` → `react-client-components` → `caching` | Optimize component architecture |
@@ -52,7 +52,7 @@ development workflows end-to-end. The ONE orchestrator for structured multi-skil
 | `a11y` | `accessibility` → `shadcn` → `react-forms` → `testing` | Accessibility compliance pass |
 | `migration` | `prisma` → `database-seeding` → `testing` | Database migration with seed and verify |
 | `seo` | `nextjs-metadata` → `seo-advanced` → `i18n` → `performance` | Full SEO optimization pass |
-| `full-audit` | `code-reviewer` → `api-security-auditor` → `a11y-auditor` → `perf-profiler` → `seo-auditor` → `bundle-auditor` → `db-query-auditor` → `dependency-auditor` → `error-handling-auditor` → `test-coverage-auditor` → `type-safety-auditor` → `observability-auditor` → `compliance-auditor` → `tenancy-auditor` → `api-docs-auditor` | All-agent comprehensive audit |
+| `full-audit` | `code-reviewer` → `api-security-auditor` → `a11y-auditor` → `ux-auditor` → `design-auditor` → `perf-profiler` → `seo-auditor` → `bundle-auditor` → `db-query-auditor` → `dependency-auditor` → `error-handling-auditor` → `test-coverage-auditor` → `type-safety-auditor` → `observability-auditor` → `compliance-auditor` → `tenancy-auditor` → `api-docs-auditor` | All-agent comprehensive audit |
 | `observe` | `logging` → `analytics` → `error-handling` → `performance` | Observability stack setup |
 | `full-feature` | `nextjs-routing` → `react-server-components` → `react-forms` → `react-server-actions` → `logging` → `testing` | Complete feature with observability |
 | `security-full` | `security` → `api-security-auditor` → `rate-limiting` → `logging` | Security depth with agent review |
@@ -62,15 +62,18 @@ development workflows end-to-end. The ONE orchestrator for structured multi-skil
 | `test-gaps` | `test-coverage-auditor` → `testing` | Missing test detection + fix |
 | `resilience` | `observability` → `error-handling` → `logging` → `testing` | Health checks, tracing, circuit breakers, graceful degradation |
 | `gdpr` | `compliance` → `prisma` → `security` → `logging` → `testing` | GDPR-compliant data handling with audit trails |
-| `api-first` | `api-routes` → `api-documentation` → `typescript-patterns` → `security` → `testing` | API-first product with auto-generated docs and type-safe clients |
+| `api-first` | `api-routes` → `trpc` → `api-documentation` → `typescript-patterns` → `security` → `testing` | API-first product with auto-generated docs and type-safe clients |
 | `b2b-saas` | `multi-tenancy` → `feature-flags` → `compliance` → `auth` → `payments` → `testing` | Full B2B SaaS with tenant isolation, billing, compliance |
 | `content-site` | `cms` → `nextjs-metadata` → `seo-advanced` → `edge-computing` → `image-optimization` → `performance` | Marketing site or blog with CMS, SEO, edge delivery |
 | `search-notify` | `search` → `notifications` → `real-time` → `analytics` → `testing` | Search-heavy app with notifications and real-time updates |
 | `mobile-first` | `pwa` → `notifications` → `image-optimization` → `accessibility` → `performance` → `testing` | Mobile-first app with offline support and native-like experience |
-| `design-system` | `storybook` → `shadcn` → `visual-regression` → `accessibility` → `tailwind-v4` | Design system with visual documentation and regression testing |
+| `design-system` | `visual-design` → `storybook` → `shadcn` → `visual-regression` → `accessibility` → `tailwind-v4` | Design system with visual documentation and regression testing |
 | `perf-audit` | `perf-profiler` → `bundle-auditor` → `performance` | Performance and bundle audit with optimization |
 | `bundle-optimize` | `bundle-auditor` → `react-server-components` → `react-client-components` → `performance` | Client/server boundary optimization |
 | `docs-sprint` | `api-documentation` → `storybook` → `testing` | API docs, component docs, and test generation |
+| `ui-polish` | `visual-design` → `composition-patterns` → `dark-mode` → `animation` → `responsive-design` → `layout-patterns` → `accessibility` | Visual polish pass for functionally complete apps |
+| `landing-polish` | `landing-patterns` → `visual-design` → `animation` → `seo-advanced` → `image-optimization` → `performance` | Marketing site with visual polish and SEO |
+| `interactive-feature` | `nextjs-routing` → `react-server-components` → `react-forms` → `advanced-form-ux` → `react-server-actions` → `animation` → `testing` | Extended feature pipeline with rich interactivity |
 
 ## Execution Rules
 
@@ -111,14 +114,16 @@ development workflows end-to-end. The ONE orchestrator for structured multi-skil
 ### harden
 ```
 1. security — CSP headers, server-only, env validation
-2. rate-limiting — protect API routes and Server Actions from abuse
-3. accessibility — WCAG 2.1 AA compliance, semantic HTML, ARIA
-4. performance — bundle analysis, dynamic imports, image optimization
-5. observability — health checks, tracing, circuit breakers
+2. secrets-management — secret rotation, env hardening, CI/CD injection
+   Skip if: secrets already managed via Doppler/Infisical
+3. rate-limiting — protect API routes and Server Actions from abuse
+4. accessibility — WCAG 2.1 AA compliance, semantic HTML, ARIA
+5. performance — bundle analysis, dynamic imports, image optimization
+6. observability — health checks, tracing, circuit breakers
    Skip if: instrumentation.ts exists
-6. error-handling — error.tsx, global-error.tsx, not-found.tsx
-7. caching — explicit cache strategies, revalidation tags
-8. testing — unit tests for actions, E2E for critical flows
+7. error-handling — error.tsx, global-error.tsx, not-found.tsx
+8. caching — explicit cache strategies, revalidation tags
+9. testing — unit tests for actions, E2E for critical flows
 ```
 
 ### ship
@@ -182,19 +187,21 @@ Note: This is an agent pipeline — each step runs an agent, not a skill.
 1. code-reviewer — React 19, Next.js 15, TypeScript, security review
 2. api-security-auditor — Server Action input validation, auth, injection
 3. a11y-auditor — WCAG 2.1 AA accessibility audit
-4. perf-profiler — Bundle, data fetching, rendering analysis
-5. seo-auditor — Metadata, structured data, sitemap
-6. bundle-auditor — Route sizes, client/server boundaries
-7. db-query-auditor — N+1 queries, missing indexes, cascade risks
-8. dependency-auditor — npm security, licensing, outdated deps
-9. error-handling-auditor — Error boundaries, try-catch, error.tsx coverage
-10. test-coverage-auditor — Missing tests for actions, critical flows
-11. type-safety-auditor — No-any enforcement, type narrowing
-12. observability-auditor — Health endpoints, tracing, timeouts, circuit breakers
-13. compliance-auditor — GDPR consent, PII handling, audit logging, data retention
-14. tenancy-auditor — Tenant isolation, cross-tenant leaks, query scoping
+4. ux-auditor — loading states, empty states, dark mode, touch, feedback, responsive, focus
+5. design-auditor — color consistency, elevation, visual hierarchy, spacing, microinteractions
+6. perf-profiler — Bundle, data fetching, rendering analysis
+7. seo-auditor — Metadata, structured data, sitemap
+8. bundle-auditor — Route sizes, client/server boundaries
+9. db-query-auditor — N+1 queries, missing indexes, cascade risks
+10. dependency-auditor — npm security, licensing, outdated deps
+11. error-handling-auditor — Error boundaries, try-catch, error.tsx coverage
+12. test-coverage-auditor — Missing tests for actions, critical flows
+13. type-safety-auditor — No-any enforcement, type narrowing
+14. observability-auditor — Health endpoints, tracing, timeouts, circuit breakers
+15. compliance-auditor — GDPR consent, PII handling, audit logging, data retention
+16. tenancy-auditor — Tenant isolation, cross-tenant leaks, query scoping
     Skip if: no Tenant model in schema
-15. api-docs-auditor — OpenAPI coverage, versioning, documentation completeness
+17. api-docs-auditor — OpenAPI coverage, versioning, documentation completeness
     Skip if: no OpenAPI/Swagger setup detected
 ```
 
@@ -276,10 +283,12 @@ Note: Mixed pipeline — agent and skill.
 ### api-first
 ```
 1. api-routes — implement route handlers with Zod validation
-2. api-documentation — OpenAPI spec from Zod, Swagger UI, versioning
-3. typescript-patterns — generate type-safe client SDK
-4. security — auth documentation, rate limiting per endpoint
-5. testing — API contract tests, versioning regression tests
+2. trpc — optional tRPC router for type-safe API layer
+   Skip if: no tRPC configured
+3. api-documentation — OpenAPI spec from Zod, Swagger UI, versioning
+4. typescript-patterns — generate type-safe client SDK
+5. security — auth documentation, rate limiting per endpoint
+6. testing — API contract tests, versioning regression tests
 ```
 
 ### b2b-saas
@@ -326,11 +335,13 @@ Note: Mixed pipeline — agent and skill.
 
 ### design-system
 ```
-1. storybook — Storybook 8 setup, component stories, autodocs
-2. shadcn — stories for all shadcn components with controls
-3. visual-regression — Playwright screenshot tests for components
-4. accessibility — per-component a11y audit via Storybook addon
-5. tailwind-v4 — design tokens in @theme, CSS-first config
+1. visual-design — color system, elevation scale, spacing rhythm, visual hierarchy
+   Skip if: @theme has brand color scale
+2. storybook — Storybook 8 setup, component stories, autodocs
+3. shadcn — stories for all shadcn components with controls
+4. visual-regression — Playwright screenshot tests for components
+5. accessibility — per-component a11y audit via Storybook addon
+6. tailwind-v4 — design tokens in @theme, CSS-first config
 ```
 
 ### perf-audit
@@ -354,6 +365,47 @@ Note: Mixed pipeline — agent and skills.
 1. api-documentation — OpenAPI spec, Swagger UI, versioning
 2. storybook — component stories and visual docs
 3. testing — documentation-driven test generation
+```
+
+### ui-polish
+```
+Visual polish pass for functionally complete apps.
+1. visual-design — establish color system, elevation, spacing rhythm, visual hierarchy
+   Skip if: @theme has brand color scale
+2. composition-patterns — refactor boolean-prop components into compound/variant patterns
+   Skip if: no components with 3+ boolean mode props
+3. dark-mode — set up theme switching with next-themes
+   Skip if: ThemeProvider already configured
+4. animation — add page transitions, microinteractions
+5. responsive-design — mobile-first audit, container queries, touch targets
+6. layout-patterns — dashboard shell, sidebar, breadcrumbs
+   Skip if: layout already implemented
+7. accessibility — final a11y audit on polished UI
+```
+
+### landing-polish
+```
+Marketing site with visual polish and SEO.
+1. landing-patterns — hero sections, bento grid, pricing, CTA
+2. visual-design — color system, elevation, gradients, glassmorphism
+   Skip if: @theme has brand color scale
+3. animation — scroll reveals, stagger entry, hover effects
+4. seo-advanced — JSON-LD, sitemap, OpenGraph images
+5. image-optimization — responsive images, blur placeholders
+6. performance — Core Web Vitals, bundle analysis
+```
+
+### interactive-feature
+```
+Extended feature pipeline with rich interactivity.
+1. nextjs-routing — create route files (page.tsx, layout.tsx)
+2. react-server-components — build data-fetching components
+3. react-forms — add interactive form UI
+4. advanced-form-ux — add wizard, auto-save, date pickers
+   Skip if: simple form (no multi-step or advanced inputs)
+5. react-server-actions — implement mutation logic
+6. animation — add transitions and feedback animations
+7. testing — unit tests for actions, E2E for flows
 ```
 
 ## Pattern
@@ -384,6 +436,14 @@ that already exists.
 - Skipping `testing` in `ship` — always test before deploy
 - Running `harden` before `build` — no app to harden yet
 
+## Checklist
+- [ ] Pipeline matches user intent (build/feature/harden/ship/audit)
+- [ ] Project state checked before each step (skip if already done)
+- [ ] Skills loaded sequentially — max 3 active at once
+- [ ] Errors stop the pipeline (don't continue on failure)
+- [ ] Progress reported to user at each step
+- [ ] Conditional steps evaluated (skip conditions checked)
+
 ## Composes With
 - `vibe` — vibe classifies intent, flow runs the pipeline
-- All 56 skills — flow chains them in sequence
+- All 69 skills — flow chains them in sequence

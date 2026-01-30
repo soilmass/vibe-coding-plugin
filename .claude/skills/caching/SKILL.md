@@ -157,6 +157,44 @@ opt in with `cache: "force-cache"` or `next: { revalidate: N }`.
 - [ ] `revalidateTag()` preferred over `revalidatePath()` for precision
 - [ ] Static pages use `generateStaticParams` + `revalidate` segment config
 
+### LRU cross-request cache
+```tsx
+// Module-level Map for expensive computations that persist across requests
+// Unlike React.cache (per-request), this survives between requests
+
+const LRU_MAX = 100;
+const LRU_TTL = 60_000; // 60 seconds
+
+type CacheEntry<T> = { value: T; timestamp: number };
+
+const cache = new Map<string, CacheEntry<unknown>>();
+
+export function lruCache<T>(key: string, compute: () => T): T {
+  const existing = cache.get(key) as CacheEntry<T> | undefined;
+
+  if (existing && Date.now() - existing.timestamp < LRU_TTL) {
+    return existing.value;
+  }
+
+  const value = compute();
+  cache.set(key, { value, timestamp: Date.now() });
+
+  // Evict oldest entries if over max size
+  if (cache.size > LRU_MAX) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey) cache.delete(firstKey);
+  }
+
+  return value;
+}
+
+// Usage: expensive computation cached across requests
+const config = lruCache("app-config", () => parseConfig(rawConfig));
+```
+
+Use `React.cache()` for per-request dedup, `unstable_cache` for CDN-level caching,
+and module-level LRU for expensive in-process computations that don't need invalidation.
+
 ## Composes With
 - `nextjs-data` — caching is applied to data fetching patterns
 - `react-server-actions` — actions trigger revalidation

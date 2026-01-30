@@ -216,8 +216,79 @@ function MyForm() {
 - [ ] Server Action validates with Zod (client validation is UX only)
 - [ ] Optimistic updates via `useOptimistic` where appropriate
 
+### HTML form best practices
+```tsx
+// autocomplete and meaningful name on all inputs
+<input name="email" type="email" autoComplete="email" />
+<input name="given-name" type="text" autoComplete="given-name" />
+<input name="tel" type="tel" autoComplete="tel" inputMode="tel" />
+<input name="postal-code" type="text" autoComplete="postal-code" inputMode="numeric" />
+
+// Correct type and inputMode for mobile keyboards
+<input type="email" inputMode="email" />    // @ key visible
+<input type="url" inputMode="url" />        // .com key visible
+<input type="number" inputMode="decimal" /> // Number pad
+
+// NEVER block paste — breaks password managers
+// WRONG:
+<input onPaste={(e) => e.preventDefault()} /> // Hostile to users
+
+// spellCheck={false} on non-prose inputs
+<input type="email" spellCheck={false} />
+<input name="username" spellCheck={false} />
+<input name="code" spellCheck={false} />
+
+// Labels must be clickable — htmlFor or wrapping
+<label htmlFor="email">Email</label>
+<input id="email" name="email" />
+// OR
+<label>
+  Email
+  <input name="email" />
+</label>
+
+// Submit button: enabled by default, spinner during request
+// WRONG: disabled until form is valid (users can't tell why it's disabled)
+// CORRECT: enabled → shows validation errors on submit → spinner during request
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? <Spinner /> : "Save changes"}
+    </button>
+  );
+}
+
+// Inline errors next to fields + focus first error on submit
+function focusFirstError(formRef: React.RefObject<HTMLFormElement>) {
+  const firstInvalid = formRef.current?.querySelector("[aria-invalid='true']");
+  if (firstInvalid instanceof HTMLElement) firstInvalid.focus();
+}
+
+// Placeholders: end with … and show example pattern
+<input placeholder="name@example.com…" />
+<input placeholder="Search products…" />
+
+// Warn before navigation with unsaved changes
+useEffect(() => {
+  if (!isDirty) return;
+  const handler = (e: BeforeUnloadEvent) => {
+    e.preventDefault();
+  };
+  window.addEventListener("beforeunload", handler);
+  return () => window.removeEventListener("beforeunload", handler);
+}, [isDirty]);
+
+// Checkboxes/radios: label + control share single hit target
+<label className="flex items-center gap-2 cursor-pointer">
+  <input type="checkbox" name="agree" />
+  <span>I agree to the terms</span>
+</label>
+```
+
 ## Composes With
 - `react-server-actions` — forms submit to server actions
 - `shadcn` — shadcn Form component provides structure
 - `error-handling` — form errors shown inline, not in error boundaries
 - `logging` — track form submissions and validation failures
+- `accessibility` — form inputs need proper ARIA, labels, and error announcements

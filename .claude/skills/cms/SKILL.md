@@ -240,6 +240,77 @@ up CMS webhooks that call your revalidation endpoint.
 - [ ] `generateStaticParams` for static generation
 - [ ] CMS images through `next/image` loader
 
+### Code syntax highlighting
+```tsx
+// Shiki integration for code blocks in MDX/CMS content
+// Install: npm install shiki rehype-pretty-code
+
+// rehype-pretty-code with MDX
+import { MDXRemote } from "next-mdx-remote/rsc";
+import rehypePrettyCode from "rehype-pretty-code";
+
+const options = {
+  theme: "github-dark",
+  keepBackground: true,
+};
+
+export function MDXContent({ source }: { source: string }) {
+  return (
+    <MDXRemote
+      source={source}
+      options={{ mdxOptions: { rehypePlugins: [[rehypePrettyCode, options]] } }}
+    />
+  );
+}
+```
+
+```tsx
+// Copy-to-clipboard button for code blocks
+"use client";
+
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export function CopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Button variant="ghost" size="icon" onClick={handleCopy} className="absolute top-2 right-2">
+      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+    </Button>
+  );
+}
+```
+
+```css
+/* Line highlighting with rehype-pretty-code */
+/* Add data-highlighted-line attribute to highlight specific lines */
+code[data-line-numbers] {
+  counter-reset: line;
+}
+
+code[data-line-numbers] > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 1rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: gray;
+}
+
+[data-highlighted-line] {
+  background-color: rgba(200, 200, 255, 0.1);
+}
+```
+
 ## Composes With
 - `nextjs-data` — caching strategies for CMS content
 - `nextjs-metadata` — dynamic metadata from CMS fields
@@ -247,3 +318,4 @@ up CMS webhooks that call your revalidation endpoint.
 - `image-optimization` — CMS image optimization via next/image
 - `react-server-components` — server-side MDX rendering
 - `seo-advanced` — CMS content SEO
+- `dark-mode` — code block themes adapt to light/dark mode

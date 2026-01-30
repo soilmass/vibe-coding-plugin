@@ -113,9 +113,67 @@ before awaiting causes runtime errors.
 - [ ] `loading.tsx` provides Suspense boundaries
 - [ ] Dynamic routes use `[param]` naming convention
 
+### Intercepting routes for modals
+```
+src/app/
+├── feed/
+│   └── page.tsx              # Feed page with photo grid
+├── photo/[id]/
+│   └── page.tsx              # Full photo page (direct navigation)
+└── @modal/
+    └── (.)photo/[id]/
+        └── page.tsx          # Photo modal overlay (intercepted navigation)
+```
+
+The `(.)` prefix intercepts the route at the same level. When clicking a photo link
+from the feed, the modal renders as an overlay. When navigating directly to `/photo/123`,
+the full page renders instead.
+
+```tsx
+// src/app/layout.tsx
+export default function Layout({
+  children,
+  modal,
+}: {
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
+  return (
+    <>
+      {children}
+      {modal}
+    </>
+  );
+}
+
+// src/app/@modal/(.)photo/[id]/page.tsx
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
+
+export default function PhotoModal({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
+  const { id } = await params;
+
+  return (
+    <Dialog open onOpenChange={() => router.back()}>
+      <DialogContent>
+        <PhotoDetail id={id} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+Interception conventions:
+- `(.)` — same level
+- `(..)` — one level up
+- `(..)(..)` — two levels up
+- `(...)` — from root
+
 ## Composes With
 - `error-handling` — error.tsx is a routing convention
 - `react-suspense` — loading.tsx creates Suspense boundaries
 - `nextjs-middleware` — middleware runs before route resolution
 - `i18n` — locale-aware routing with `[locale]` segments
 - `state-management` — URL state syncs with route params via nuqs
+- `layout-patterns` — parallel routes for split views

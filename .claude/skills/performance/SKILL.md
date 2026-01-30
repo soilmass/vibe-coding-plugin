@@ -192,8 +192,164 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 - [ ] Web Vitals monitored (CLS < 0.1, LCP < 2.5s, FID < 100ms)
 - [ ] Known dynamic routes use `generateStaticParams` for pregeneration
 
+### Animation performance
+```tsx
+// Use transform and opacity — GPU-accelerated, no layout reflow
+// GOOD: transform, opacity, filter
+<motion.div animate={{ scale: 1.05, opacity: 0.8 }} />
+
+// BAD: width, height, top, left — triggers layout
+<motion.div animate={{ width: 300, height: 200 }} />
+
+// will-change hint for complex animations
+<div className="will-change-transform">
+  {/* Browser pre-allocates compositor layer */}
+</div>
+
+// content-visibility: auto for off-screen content
+<section className="content-visibility-auto contain-intrinsic-size-[0_500px]">
+  {/* Skips rendering until scrolled into view */}
+</section>
+```
+
+```css
+/* CSS content-visibility for large pages */
+@utility content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+```
+
+### Bundle optimization
+```tsx
+// Import directly from modules — avoid barrel files
+// WRONG: pulls in entire library through index re-exports
+import { Button } from "./components";           // barrel file
+import { format } from "date-fns";               // entire library
+
+// CORRECT: import from specific module
+import { Button } from "./components/Button";
+import { format } from "date-fns/format";
+
+// Defer third-party scripts until after hydration
+import Script from "next/script";
+<Script src="https://analytics.example.com/script.js" strategy="afterInteractive" />
+
+// Conditional module loading — import only when feature is activated
+async function handleExport() {
+  const { exportToPDF } = await import("@/lib/pdf-export");
+  await exportToPDF(data);
+}
+
+// Preload on hover/focus for perceived speed
+import { useRouter } from "next/navigation";
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <a
+      href={href}
+      onMouseEnter={() => router.prefetch(href)}
+      onFocus={() => router.prefetch(href)}
+    >
+      {children}
+    </a>
+  );
+}
+```
+
+### Rendering optimization
+```tsx
+// Hoist static JSX outside component function
+const EMPTY_STATE = (
+  <div className="py-12 text-center text-muted-foreground">
+    No items found
+  </div>
+);
+
+function ItemList({ items }: { items: Item[] }) {
+  if (items.length === 0) return EMPTY_STATE; // No re-creation
+  return <ul>{items.map(/* ... */)}</ul>;
+}
+
+// Animate <div> wrapper around SVG, not <svg> directly (GPU acceleration)
+<motion.div animate={{ scale: 1.1 }}>
+  <svg>{/* ... */}</svg>
+</motion.div>
+
+// Conditional rendering: ternary not && (avoids rendering 0 or "")
+// WRONG: renders "0" to the DOM
+{count && <Badge>{count}</Badge>}
+// CORRECT:
+{count > 0 ? <Badge>{count}</Badge> : null}
+
+// content-visibility: auto for off-screen sections
+<section className="[content-visibility:auto] [contain-intrinsic-size:auto_500px]">
+  {/* Browser skips rendering until scrolled into view */}
+</section>
+
+// Inline <script> for client-only data (prevents hydration flicker)
+// Use for non-sensitive config that client needs immediately
+```
+
+### JS micro-optimizations (hot paths only)
+```tsx
+// Set/Map for O(1) lookups instead of array.includes()
+const selectedIds = new Set(items.map((i) => i.id));
+const isSelected = selectedIds.has(targetId); // O(1) vs O(n)
+
+// Cache property access in tight loops
+function processItems(items: Item[]) {
+  const len = items.length;
+  for (let i = 0; i < len; i++) {
+    // ...
+  }
+}
+
+// Combine .filter().map() into single reduce or loop
+// WRONG: iterates twice
+const result = items.filter((i) => i.active).map((i) => i.name);
+// CORRECT: single pass
+const result = items.reduce<string[]>((acc, i) => {
+  if (i.active) acc.push(i.name);
+  return acc;
+}, []);
+
+// Check .length before expensive comparison
+if (items.length > 0 && items.some((i) => expensiveCheck(i))) { /* ... */ }
+
+// Early exit from functions
+function processData(data: Data | null) {
+  if (!data) return;
+  if (!data.items.length) return;
+  // ... expensive processing
+}
+
+// Hoist RegExp creation outside loops
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function validateEmails(emails: string[]) {
+  return emails.filter((e) => EMAIL_RE.test(e));
+}
+
+// toSorted() for immutable sorting (no mutation)
+const sorted = items.toSorted((a, b) => a.name.localeCompare(b.name));
+```
+
+### Hover state gating
+```css
+/* Only apply hover effects on devices that support hover */
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+/* Touch devices skip hover entirely — no sticky hover bugs */
+```
+
 ## Composes With
 - `react-suspense` — Suspense boundaries for streaming
 - `caching` — cache strategies affect load times
 - `nextjs-data` — data fetching patterns affect TTFB
 - `logging` — performance metrics logging
+- `animation` — animation performance with GPU-accelerated properties
+- `react-client-components` — re-render optimization affects client performance

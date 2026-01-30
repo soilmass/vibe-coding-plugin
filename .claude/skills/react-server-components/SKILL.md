@@ -122,8 +122,77 @@ Only add `"use client"` when you use hooks, event handlers, or browser APIs.
 - [ ] `import "server-only"` on sensitive server modules
 - [ ] Children pattern used for server content inside client wrappers
 
+### Minimize serialization across the boundary
+```tsx
+// WRONG: passing full object to client component
+export async function ProductSection() {
+  const product = await db.product.findUnique({
+    where: { id },
+    include: { reviews: true, inventory: true, supplier: true },
+  });
+  return <ProductCard product={product} />; // Serializes EVERYTHING
+}
+
+// CORRECT: pass only the fields the client component needs
+export async function ProductSection() {
+  const product = await db.product.findUnique({
+    where: { id },
+    select: { name: true, price: true, imageUrl: true },
+  });
+  return <ProductCard name={product.name} price={product.price} imageUrl={product.imageUrl} />;
+}
+```
+
+### Deduplicate serialized props
+```tsx
+// WRONG: same user object serialized to 10 child client components
+export async function Dashboard() {
+  const user = await getUser();
+  return (
+    <>
+      <Header user={user} />
+      <Sidebar user={user} />
+      <Profile user={user} />
+      <Settings user={user} />
+    </>
+  );
+}
+
+// CORRECT: serialize once to a provider, children read from context
+export async function Dashboard() {
+  const user = await getUser();
+  return (
+    <UserProvider user={user}>
+      <Header />
+      <Sidebar />
+      <Profile />
+      <Settings />
+    </UserProvider>
+  );
+}
+```
+
+### Parallel via sibling Server Components
+```tsx
+// Sibling async Server Components fetch in parallel automatically
+// Each component independently streams when its data resolves
+export default function Page() {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <Suspense fallback={<Skeleton />}>
+        <RevenueChart />  {/* async — fetches revenue data */}
+      </Suspense>
+      <Suspense fallback={<Skeleton />}>
+        <UserGrowth />    {/* async — fetches user data, parallel */}
+      </Suspense>
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `react-client-components` — client components handle the interactive parts
 - `nextjs-data` — data fetching happens in server components
 - `caching` — cache strategies apply to server-side data fetching
 - `state-management` — RSC decisions drive state architecture choices
+- `composition-patterns` — provider patterns for deduplicating serialized props

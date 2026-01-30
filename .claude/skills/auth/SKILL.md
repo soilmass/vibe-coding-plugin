@@ -29,7 +29,7 @@ route protection, and Prisma adapter. The ONE skill for authentication.
 
 ## Pattern
 
-### Auth.js configuration
+### Auth.js configuration (multi-provider)
 ```tsx
 // src/lib/auth.ts
 import NextAuth from "next-auth";
@@ -40,7 +40,16 @@ import { db } from "@/lib/db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
-  providers: [GitHub, Google],
+  providers: [
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    }),
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
   callbacks: {
     session({ session, user }) {
       session.user.id = user.id;
@@ -130,9 +139,43 @@ Client-side session checks cause waterfalls and flash of wrong content.
 - [ ] Session callback includes user ID
 - [ ] Prisma adapter schema includes User, Account, Session tables
 
+### Auth UI patterns
+```tsx
+// Login page with OAuth buttons and form layout
+import { signIn } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function LoginPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>Choose a provider to continue</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <form action={async () => { "use server"; await signIn("github"); }}>
+            <Button variant="outline" className="w-full" type="submit">
+              Continue with GitHub
+            </Button>
+          </form>
+          <form action={async () => { "use server"; await signIn("google"); }}>
+            <Button variant="outline" className="w-full" type="submit">
+              Continue with Google
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `prisma` — Prisma adapter stores users and sessions
 - `security` — auth provides identity, security enforces authorization
 - `nextjs-middleware` — middleware handles route protection
 - `payments` — billing requires authenticated users
 - `logging` — log authentication attempts and failures
+- `shadcn` — Card, Button for login UI composition

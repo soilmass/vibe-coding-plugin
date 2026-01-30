@@ -144,8 +144,101 @@ export function LocaleSwitcher() {
 - [ ] `generateMetadata` uses locale-aware translations
 - [ ] `params` is awaited before accessing `locale`
 
+### RTL support
+```tsx
+// Set dir attribute based on locale
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const dir = ["ar", "he", "fa", "ur"].includes(locale) ? "rtl" : "ltr";
+
+  return (
+    <html lang={locale} dir={dir}>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+```tsx
+// Use logical CSS properties in Tailwind for RTL compatibility
+// ms-* = margin-inline-start (replaces ml-*)
+// me-* = margin-inline-end (replaces mr-*)
+// ps-* = padding-inline-start (replaces pl-*)
+// pe-* = padding-inline-end (replaces pr-*)
+
+export function NavItem({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 ps-4 pe-6">
+      {icon}
+      <span>{label}</span>
+    </div>
+  );
+}
+// In LTR: padding-left: 1rem, padding-right: 1.5rem
+// In RTL: padding-right: 1rem, padding-left: 1.5rem (auto-flipped!)
+
+// Bidirectional text
+// Use unicode-bidi and direction for mixed content
+// <bdi> element for user-generated content that may be RTL
+<p>User posted: <bdi>{userContent}</bdi></p>
+```
+
+### Intl formatting APIs
+```tsx
+// NEVER hardcode date/number formats — use Intl APIs
+
+// Intl.DateTimeFormat for all dates
+function FormattedDate({ date, locale }: { date: Date; locale: string }) {
+  const formatted = new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+  return <time dateTime={date.toISOString()}>{formatted}</time>;
+}
+// en-US: "January 30, 2026"
+// de-DE: "30. Januar 2026"
+// ja-JP: "2026年1月30日"
+
+// Intl.NumberFormat for currency, decimals, percentages
+function FormattedPrice({ amount, currency, locale }: {
+  amount: number; currency: string; locale: string;
+}) {
+  return (
+    <span>
+      {new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+      }).format(amount)}
+    </span>
+  );
+}
+// en-US, USD: "$1,234.56"
+// de-DE, EUR: "1.234,56 €"
+
+// Percentages
+new Intl.NumberFormat(locale, { style: "percent" }).format(0.75); // "75%"
+
+// Detect language via Accept-Language or navigator.languages
+// Server-side:
+const locale = request.headers.get("accept-language")?.split(",")[0] ?? "en";
+
+// Client-side:
+const locale = navigator.languages[0] ?? navigator.language ?? "en";
+
+// NEVER detect language by IP geolocation — users travel, use VPNs,
+// and may prefer a different language than their location suggests
+```
+
 ## Composes With
 - `nextjs-routing` — `[locale]` is a route segment
 - `nextjs-middleware` — locale detection runs in middleware
 - `nextjs-metadata` — metadata varies by locale
 - `seo-advanced` — hreflang tags and locale-specific structured data
+- `tailwind-v4` — logical CSS properties for RTL support

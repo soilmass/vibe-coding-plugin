@@ -146,8 +146,93 @@ export async function GET(request: Request) {
 - [ ] Responsive images have `sizes` prop
 - [ ] Remote image domains configured in `next.config.ts`
 
+### Gallery / carousel patterns
+```tsx
+// Image gallery grid
+import Image from "next/image";
+
+export function ImageGallery({ images }: { images: { src: string; alt: string }[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      {images.map((img, i) => (
+        <div key={i} className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg">
+          <Image
+            src={img.src}
+            alt={img.alt}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform group-hover:scale-105"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+```tsx
+// Lightbox pattern (dialog overlay for full-size image)
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+export function LightboxGallery({ images }: { images: { src: string; alt: string }[] }) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2">
+        {images.map((img, i) => (
+          <button key={i} onClick={() => setSelectedIndex(i)} className="relative aspect-square overflow-hidden rounded">
+            <Image src={img.src} alt={img.alt} fill sizes="33vw" className="object-cover" />
+          </button>
+        ))}
+      </div>
+
+      <Dialog open={selectedIndex !== null} onOpenChange={() => setSelectedIndex(null)}>
+        <DialogContent className="max-w-4xl p-0">
+          {selectedIndex !== null && (
+            <div className="relative aspect-video">
+              <Image
+                src={images[selectedIndex].src}
+                alt={images[selectedIndex].alt}
+                fill
+                sizes="90vw"
+                className="object-contain"
+                priority
+              />
+            </div>
+          )}
+          <div className="flex justify-between p-4">
+            <button
+              onClick={() => setSelectedIndex(Math.max(0, (selectedIndex ?? 0) - 1))}
+              disabled={selectedIndex === 0}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setSelectedIndex(Math.min(images.length - 1, (selectedIndex ?? 0) + 1))}
+              disabled={selectedIndex === images.length - 1}
+            >
+              Next
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// Carousel with keyboard navigation and touch swipe
+// For production carousels, use embla-carousel-react (shadcn Carousel is built on it)
+// npx shadcn@latest add carousel
+```
+
 ## Composes With
 - `performance` — images are the biggest LCP factor
 - `nextjs-metadata` — OG images for social sharing
 - `accessibility` — alt text is required for screen readers
 - `file-uploads` — user-uploaded images need optimization too
+- `responsive-design` — responsive image sizes and grid layouts

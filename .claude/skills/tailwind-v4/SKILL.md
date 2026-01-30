@@ -126,7 +126,219 @@ Tailwind v4 replaces JavaScript config files with CSS-first `@theme {}` blocks.
 - [ ] `cn()` used for all conditional class merging
 - [ ] No `tailwind.config.js` file in project
 
+### Container queries
+```css
+/* Tailwind v4 container queries — component responds to parent size */
+```
+
+```tsx
+// Wrap parent with @container, use @sm/@md/@lg on children
+export function ResponsiveCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="@container">
+      <div className="flex flex-col @sm:flex-row @md:gap-6 gap-3">
+        <div className="@sm:w-1/3">Image</div>
+        <div className="@sm:w-2/3">{children}</div>
+      </div>
+    </div>
+  );
+}
+```
+
+### @starting-style for CSS entry animations
+```css
+/* CSS-only entry animations without JavaScript */
+@utility fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Dialog entry animation using @starting-style */
+@utility dialog-animate {
+  transition: opacity 0.2s, transform 0.2s;
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+```
+
+### @tailwindcss/typography for prose content
+```css
+/* Install: npm install @tailwindcss/typography */
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+```
+
+```tsx
+// Use prose classes for rich text / markdown / CMS content
+export function Article({ html }: { html: string }) {
+  return (
+    <article
+      className="prose dark:prose-invert max-w-2xl mx-auto"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+// prose modifiers
+// prose-sm / prose-lg — size variants
+// prose-invert — dark mode
+// max-w-prose — optimal reading width (~65ch)
+```
+
+### Typography rules
+```tsx
+// Use real ellipsis character, not three dots
+<span>Loading…</span>   // CORRECT: … (U+2026)
+<span>Loading...</span>  // WRONG: three periods
+
+// Curly quotes for displayed text
+<p>"Hello," she said.</p>   // CORRECT: " " (U+201C, U+201D)
+// Straight quotes are fine in code and attributes
+
+// Non-breaking spaces for units and shortcuts
+<span>10&nbsp;MB</span>     // Prevents "10" and "MB" splitting across lines
+<kbd>⌘&nbsp;K</kbd>         // Keeps shortcut together
+
+// tabular-nums for number columns — digits align vertically
+<td className="font-[font-variant-numeric:tabular-nums]">1,234.56</td>
+// Or use Tailwind: tabular-nums (if configured)
+<td className="tabular-nums">$1,234.56</td>
+
+// text-wrap: balance on headings (prevents widows)
+<h1 className="text-balance">This Heading Will Not Have a Single Orphaned Word</h1>
+
+// text-wrap: pretty on body paragraphs
+<p className="text-pretty">Long paragraph text gets better line breaks.</p>
+```
+
+### Content handling
+```tsx
+// Truncation utilities
+<p className="truncate">Single line that truncates with ellipsis…</p>
+<p className="line-clamp-3">Multi-line text clamped to 3 lines…</p>
+<p className="break-words">Longwithoutspaceswordthatbreaksinsteadofoverflowing</p>
+
+// min-w-0 on flex children to allow text truncation/shrinking
+<div className="flex gap-4">
+  <div className="min-w-0 flex-1">  {/* Without min-w-0, truncate won't work */}
+    <p className="truncate">{longUserGeneratedText}</p>
+  </div>
+  <button className="shrink-0">Action</button>
+</div>
+
+// Anticipate user-generated content lengths
+// Short: empty state ("No description")
+// Average: normal display
+// Very long: truncate with "Show more" or line-clamp
+{description.length > 200 ? (
+  <ExpandableText text={description} maxLength={200} />
+) : (
+  <p>{description}</p>
+)}
+```
+
+### Premium Design Token System
+
+Complete `@theme` block with all visual design tokens for a polished, production-quality design system.
+
+```css
+/* app/globals.css — full premium token system */
+@import "tailwindcss";
+
+@theme {
+  /* === Brand Color Scale (oklch, 9-step) === */
+  /* Pick ONE hue for brand. Example: 270 (indigo) */
+  --color-brand-50:  oklch(0.97 0.02 270);
+  --color-brand-100: oklch(0.93 0.04 270);
+  --color-brand-200: oklch(0.86 0.08 270);
+  --color-brand-300: oklch(0.76 0.12 270);
+  --color-brand-400: oklch(0.66 0.18 270);
+  --color-brand-500: oklch(0.55 0.22 270);
+  --color-brand-600: oklch(0.47 0.20 270);
+  --color-brand-700: oklch(0.39 0.17 270);
+  --color-brand-800: oklch(0.31 0.13 270);
+  --color-brand-900: oklch(0.24 0.09 270);
+  --color-brand-950: oklch(0.17 0.06 270);
+
+  /* === Accent Scale (complementary or analogous hue) === */
+  --color-accent-400: oklch(0.66 0.16 150);
+  --color-accent-500: oklch(0.55 0.20 150);
+  --color-accent-600: oklch(0.47 0.17 150);
+
+  /* === Gray with Brand Tint (chroma 0.01–0.02) === */
+  --color-gray-50:  oklch(0.98 0.01 270);
+  --color-gray-100: oklch(0.96 0.01 270);
+  --color-gray-200: oklch(0.90 0.01 270);
+  --color-gray-300: oklch(0.83 0.01 270);
+  --color-gray-400: oklch(0.70 0.01 270);
+  --color-gray-500: oklch(0.55 0.01 270);
+  --color-gray-600: oklch(0.44 0.01 270);
+  --color-gray-700: oklch(0.37 0.02 270);
+  --color-gray-800: oklch(0.27 0.02 270);
+  --color-gray-900: oklch(0.20 0.02 270);
+  --color-gray-950: oklch(0.13 0.02 270);
+
+  /* === Elevation (6-level shadow scale) === */
+  --shadow-xs:  0 1px 2px oklch(0 0 0 / 0.05);
+  --shadow-sm:  0 1px 3px oklch(0 0 0 / 0.10), 0 1px 2px oklch(0 0 0 / 0.06);
+  --shadow-md:  0 4px 6px oklch(0 0 0 / 0.10), 0 2px 4px oklch(0 0 0 / 0.06);
+  --shadow-lg:  0 10px 15px oklch(0 0 0 / 0.10), 0 4px 6px oklch(0 0 0 / 0.05);
+  --shadow-xl:  0 20px 25px oklch(0 0 0 / 0.10), 0 8px 10px oklch(0 0 0 / 0.04);
+  --shadow-2xl: 0 25px 50px oklch(0 0 0 / 0.25);
+
+  /* === Border Radius === */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* === Font Stack === */
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-display: "Cal Sans", "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* === Transition Tokens === */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+
+  /* === Gradient Tokens === */
+  --gradient-brand: linear-gradient(to right, var(--color-brand-500), var(--color-brand-600));
+  --gradient-accent: linear-gradient(to right, var(--color-brand-400), var(--color-accent-400));
+}
+```
+
+```css
+/* Custom gradient mesh utility */
+@utility gradient-mesh {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.55 0.22 270 / 0.3), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 50%, oklch(0.55 0.20 150 / 0.15), transparent),
+    radial-gradient(ellipse 50% 60% at 20% 80%, oklch(0.60 0.18 270 / 0.1), transparent);
+}
+```
+
+**Rules:**
+- All colors in oklch for perceptually uniform scales
+- Gray scale always has subtle brand tint (chroma 0.01–0.02 at brand hue)
+- Use `--font-display` for hero/marketing headings, `--font-sans` for UI
+- Transition tokens ensure consistent animation feel across all components
+- Gradient tokens composable via CSS custom properties
+
 ## Composes With
+- `visual-design` — color harmony, elevation, and spacing systems
 - `shadcn` — shadcn theme tokens live in `@theme {}`
 - `react-client-components` — className applied in client components
 - `nextjs-metadata` — theme colors referenced in metadata
+- `responsive-design` — container queries for component-level responsiveness
+- `dark-mode` — CSS variable theming with `.dark` class

@@ -95,6 +95,19 @@ orchestrator for ambiguous or multi-concern requests.
 | `trpc` | tRPC, type-safe API, RPC, end-to-end types |
 | `storybook` | Storybook, component docs, stories, visual docs |
 | `visual-regression` | visual regression, screenshot test, pixel diff |
+| `visual-design` | color harmony, elevation, shadow, gradient, glassmorphism, visual hierarchy, spacing rhythm, premium, polished, beautiful, stunning, aesthetic |
+| `landing-patterns` | hero section, landing page, bento grid, pricing table, social proof, CTA, conversion, marketing, homepage, above the fold |
+| `animation` | animation, motion, framer motion, transition, animate, page transition, microinteraction |
+| `dark-mode` | dark mode, theme, light mode, theme switching, next-themes, color scheme |
+| `data-tables` | table, data table, TanStack Table, sorting, filtering, pagination, virtualization |
+| `advanced-form-ux` | wizard, multi-step form, auto-save, conditional fields, date picker, combobox |
+| `charts` | chart, graph, visualization, recharts, tremor, bar chart, line chart, dashboard chart |
+| `drag-drop` | drag and drop, sortable, kanban, reorder, dnd-kit, drag |
+| `composition-patterns` | compound component, composition, context provider, boolean props, variant component, prop drilling |
+| `layout-patterns` | dashboard layout, sidebar, split view, master-detail, sticky header, breadcrumb |
+| `responsive-design` | responsive, mobile-first, container query, breakpoint, touch target, viewport |
+| `rich-text` | rich text, editor, tiptap, WYSIWYG, content editor, markdown editor |
+| `virtualization` | virtual list, infinite scroll, windowed, large list, scroll performance |
 
 ## Selection Examples
 
@@ -132,12 +145,74 @@ orchestrator for ambiguous or multi-concern requests.
 | "Add push notifications" | `notifications`, `real-time` |
 | "Dockerize my dev environment" | `docker-dev` |
 | "Set up Storybook" | `storybook`, `shadcn` |
+| "Add animations to my page transitions" | `animation`, `nextjs-routing` |
+| "Build a data table with sorting and filtering" | `data-tables`, `shadcn` |
+| "Add dark mode to my app" | `dark-mode`, `tailwind-v4` |
+| "Create a multi-step onboarding wizard" | `advanced-form-ux`, `react-forms` |
+| "Add a dashboard with charts" | `charts`, `layout-patterns` |
+| "Make my kanban board draggable" | `drag-drop`, `react-server-actions` |
+| "Add a command palette" | `shadcn` |
+| "Show a toast after form submission" | `shadcn`, `react-forms` |
+| "Make my app work on mobile" | `responsive-design`, `layout-patterns` |
+| "Add a rich text editor" | `rich-text`, `file-uploads` |
+| "Handle a large list with infinite scroll" | `virtualization`, `nextjs-data` |
+| "Add a code block with syntax highlighting" | `cms` |
+| "Refactor this component to avoid boolean props" | `composition-patterns`, `react-client-components` |
+| "Create a compound component" | `composition-patterns`, `state-management` |
+| "Make my site look premium" | `visual-design`, `animation`, `dark-mode` |
+| "Create a stunning landing page" | `landing-patterns`, `visual-design`, `animation` |
+| "Add a hero section" | `landing-patterns`, `visual-design` |
+| "Polish the visual design" | `visual-design`, `shadcn`, `dark-mode` |
+| "Add glassmorphic cards" | `visual-design`, `shadcn` |
+| "Build a pricing page" | `landing-patterns`, `visual-design` |
+
+## Pattern
+
+### Routing a multi-concern request
+```
+User: "Add a blog with auth and SEO"
+
+1. Parse keywords: "blog" → routing/data, "auth" → auth, "SEO" → metadata
+2. Classify intent: "Add" → action/build
+3. Select skills (max 3, one per layer):
+   - Architecture: nextjs-routing (blog pages)
+   - Infrastructure: auth (authentication)
+   - Polish: nextjs-metadata (SEO)
+4. Load skills sequentially, unload when done
+```
+
+### Routing a knowledge request
+```
+User: "Why is my data stale after mutation?"
+
+1. Parse keywords: "data stale" → caching, "mutation" → server actions
+2. Classify intent: "Why" → reference/explain
+3. Select skills (max 2):
+   - Architecture: caching (staleness, revalidation)
+   - Interaction: react-server-actions (mutation patterns)
+4. Load reference content, no side effects
+```
 
 ## Anti-pattern
 
 Loading more than 3 skills at once. This overloads context and reduces quality.
 If a request genuinely spans 4+ concerns, break it into sequential steps.
 
+## Common Mistakes
+- Loading more than 3 skills at once — reduces quality, overloads context
+- Selecting action skills for "how/why" questions — use reference skills instead
+- Not checking project state before routing to action skills (e.g., scaffolding an existing project)
+- Routing to a single generic skill when the request spans multiple layers
+- Confusing flow pipelines with vibe routing — vibe selects 1-3 skills, flow runs full pipelines
+
+## Checklist
+- [ ] Parsed user intent for keywords
+- [ ] Matched against skill triggers (When to Use)
+- [ ] Selected max 3 skills (one per lifecycle layer preferred)
+- [ ] Action skills selected only for create/build/add/scaffold intent
+- [ ] Reference skills selected for how/why/explain/show intent
+- [ ] Ambiguous intent clarified with user before selecting
+
 ## Composes With
 - `flow` — for predefined multi-step pipelines
-- All 55 other skills — vibe routes TO them
+- All 67 other skills — vibe routes TO them

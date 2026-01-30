@@ -285,10 +285,45 @@ notification fatigue and unsubscribes. Always provide per-event, per-channel pre
 - [ ] Push delivery via background job
 - [ ] Invalid subscription cleanup
 
+### Sonner toast patterns
+```tsx
+// Install: npx shadcn@latest add sonner
+// Add <Toaster /> to root layout
+
+import { toast } from "sonner";
+
+// After Server Action success
+async function handleSubmit(formData: FormData) {
+  const result = await createItem(formData);
+  if (result.success) {
+    toast.success("Item created successfully");
+  } else {
+    toast.error("Failed to create item");
+  }
+}
+
+// Toast with undo action
+function handleDelete(id: string) {
+  toast("Item deleted", {
+    action: {
+      label: "Undo",
+      onClick: () => restoreItem(id),
+    },
+    duration: 5000,
+  });
+}
+
+// Toast positioning (configure on Toaster component)
+<Toaster position="top-right" richColors />
+
+// ARIA: Sonner uses role="status" and aria-live="polite" by default
+// Queue: Sonner auto-stacks toasts, max visible configurable via Toaster
+```
+
 ## Composes With
 - `background-jobs` — async notification delivery with Inngest
 - `prisma` — notification and preference models
-- `shadcn` — notification center UI components
+- `shadcn` — notification center UI components, Sonner toast
 - `react-client-components` — interactive notification bell
 - `email` — email notification channel
 - `real-time` — live notification delivery via SSE/Pusher

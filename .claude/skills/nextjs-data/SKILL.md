@@ -135,6 +135,73 @@ state management for server data.
 - [ ] Suspense boundaries around slow-loading sections
 - [ ] No `fetch()` without explicit cache strategy
 
+### Defer Await — start early, await late
+```tsx
+// WRONG: awaiting at top blocks everything below
+export default async function Page() {
+  const user = await getUser();       // Blocks here
+  const posts = await getPosts();     // Waits for user, even though independent
+  return <Dashboard user={user} posts={posts} />;
+}
+
+// CORRECT: start promises immediately, await where consumed
+export default async function Page() {
+  const userPromise = getUser();
+  const postsPromise = getPosts();
+
+  const [user, posts] = await Promise.all([userPromise, postsPromise]);
+  return <Dashboard user={user} posts={posts} />;
+}
+```
+
+Move `await` into the branch where data is actually consumed, not at the top of the function.
+
+### Dependency-based parallelization
+```tsx
+// Fetch B depends on A, but C is independent — start C immediately
+export default async function Page() {
+  const userPromise = getUser();
+  const analyticsPromise = getAnalytics(); // Independent — starts NOW
+
+  const user = await userPromise;
+  const posts = await getPostsByUser(user.id); // Depends on user
+  const analytics = await analyticsPromise;    // Already resolved
+
+  return <Dashboard user={user} posts={posts} analytics={analytics} />;
+}
+```
+
+### Parallel via component structure
+```tsx
+// Sibling async Server Components fetch in parallel automatically
+export default function Page() {
+  return (
+    <div>
+      <Suspense fallback={<UserSkeleton />}>
+        <UserCard />   {/* fetches getUser() */}
+      </Suspense>
+      <Suspense fallback={<PostsSkeleton />}>
+        <PostList />   {/* fetches getPosts() — parallel with UserCard */}
+      </Suspense>
+    </div>
+  );
+}
+```
+
+### API Route fetch pattern — start early, await at response
+```tsx
+// Start promises at top of handler, await at response time
+export async function GET() {
+  const usersPromise = db.user.findMany();
+  const statsPromise = db.stats.aggregate();
+
+  // Do other work here...
+
+  const [users, stats] = await Promise.all([usersPromise, statsPromise]);
+  return Response.json({ users, stats });
+}
+```
+
 ## Composes With
 - `caching` — caching strategy applied to data fetches
 - `react-server-components` — Server Components are where data fetching happens
