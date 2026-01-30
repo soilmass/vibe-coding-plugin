@@ -1,0 +1,43 @@
+- name: bug
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: enhancement
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: security
+  color: "e4e669"
+  description: "Security-related issue or improvement"
+
+- name: dependencies
+  color: "0366d6"
+  description: "Dependency updates and management"
+
+- name: a11y
+  color: "7057ff"
+  description: "Accessibility improvements"
+
+- name: performance
+  color: "fbca04"
+  description: "Performance optimization"
+
+- name: i18n
+  color: "c5def5"
+  description: "Internationalization and localization"
+
+- name: documentation
+  color: "0075ca"
+  description: "Documentation updates"
+
+- name: plugin-skills
+  color: "bfdadc"
+  description: "Claude Code plugin skills"
+
+- name: plugin-agents
+  color: "d4c5f9"
+  description: "Claude Code plugin agents"
+
+- name: plugin-hooks
+  color: "f9d0c4"
+  description: "Claude Code plugin hooks"

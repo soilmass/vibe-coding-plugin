@@ -1,0 +1,90 @@
+name: Bundle Size
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  bundle-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build PR branch
+        run: npm run build
+
+      - name: Get PR bundle size
+        id: pr_size
+        run: |
+          SIZE=$(du -sb .next/static 2>/dev/null | cut -f1 || echo "0")
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "size_human=$(du -sh .next/static 2>/dev/null | cut -f1 || echo '0B')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          clean: false
+          path: base
+
+      - name: Build base branch
+        working-directory: base
+        run: |
+          npm ci
+          npm run build
+
+      - name: Get base bundle size
+        id: base_size
+        run: |
+          SIZE=$(du -sb base/.next/static 2>/dev/null | cut -f1 || echo "0")
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "size_human=$(du -sh base/.next/static 2>/dev/null | cut -f1 || echo '0B')" >> "$GITHUB_OUTPUT"
+
+      - name: Comment bundle size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prSize = parseInt('${{ steps.pr_size.outputs.size }}');
+            const baseSize = parseInt('${{ steps.base_size.outputs.size }}');
+            const diff = prSize - baseSize;
+            const pct = baseSize > 0 ? ((diff / baseSize) * 100).toFixed(1) : 'N/A';
+            const sign = diff > 0 ? '+' : '';
+            const emoji = diff > 50000 ? '⚠️' : diff < 0 ? '🎉' : '✅';
+
+            const body = `## ${emoji} Bundle Size Report
+
+            | Metric | Size |
+            |--------|------|
+            | Base | ${{ steps.base_size.outputs.size_human }} |
+            | PR | ${{ steps.pr_size.outputs.size_human }} |
+            | Diff | ${sign}${(diff / 1024).toFixed(1)}KB (${sign}${pct}%) |
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body?.includes('Bundle Size Report'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

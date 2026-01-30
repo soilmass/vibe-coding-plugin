@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get previous tag
+        id: prev_tag
+        run: |
+          PREV=$(git tag --sort=-version:refname | head -2 | tail -1 || echo "")
+          echo "tag=$PREV" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prevTag = '${{ steps.prev_tag.outputs.tag }}';
+            const currentTag = context.ref.replace('refs/tags/', '');
+            const range = prevTag ? `${prevTag}...${currentTag}` : currentTag;
+
+            const { data: comparison } = prevTag
+              ? await github.rest.repos.compareCommits({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  base: prevTag,
+                  head: currentTag,
+                })
+              : { data: { commits: [] } };
+
+            const groups = {
+              'Features': [],
+              'Bug Fixes': [],
+              'Refactoring': [],
+              'Documentation': [],
+              'Tests': [],
+              'Chores': [],
+              'Other': [],
+            };
+
+            const typeMap = {
+              feat: 'Features',
+              fix: 'Bug Fixes',
+              refactor: 'Refactoring',
+              docs: 'Documentation',
+              test: 'Tests',
+              chore: 'Chores',
+              style: 'Chores',
+              perf: 'Features',
+              ci: 'Chores',
+            };
+
+            for (const commit of comparison.commits) {
+              const msg = commit.commit.message.split('\n')[0];
+              const match = msg.match(/^(\w+)(?:\(.*?\))?:\s*(.+)/);
+              if (match) {
+                const group = typeMap[match[1]] || 'Other';
+                groups[group].push(`- ${match[2]} (${commit.sha.slice(0, 7)})`);
+              } else {
+                groups['Other'].push(`- ${msg} (${commit.sha.slice(0, 7)})`);
+              }
+            }
+
+            let changelog = `# ${currentTag}\n\n`;
+            for (const [group, items] of Object.entries(groups)) {
+              if (items.length > 0) {
+                changelog += `## ${group}\n${items.join('\n')}\n\n`;
+              }
+            }
+
+            core.setOutput('body', changelog);
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace('refs/tags/', ''),
+              name: context.ref.replace('refs/tags/', ''),
+              body: `${{ steps.changelog.outputs.body }}`,
+              draft: false,
+              prerelease: false,
+            });

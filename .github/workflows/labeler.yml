@@ -1,0 +1,55 @@
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Label PR based on changed files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = new Set();
+            for (const file of files) {
+              const path = file.filename;
+
+              if (path.startsWith('src/components/') || path.startsWith('src/app/') && path.endsWith('.tsx'))
+                labels.add('frontend');
+              if (path.startsWith('src/actions/') || path.startsWith('src/app/api/'))
+                labels.add('backend');
+              if (path.startsWith('prisma/'))
+                labels.add('database');
+              if (path.endsWith('.md') || path.endsWith('.mdx'))
+                labels.add('docs');
+              if (path.includes('__tests__') || path.includes('.test.') || path.includes('.spec.') || path.startsWith('e2e/'))
+                labels.add('tests');
+              if (path.startsWith('.github/') || path.includes('config') || path === 'package.json' || path === 'tsconfig.json')
+                labels.add('config');
+              if (path.startsWith('src/components/ui/'))
+                labels.add('ui');
+              if (path.startsWith('.claude/') || path.startsWith('prisma/') || path.includes('Dockerfile'))
+                labels.add('infrastructure');
+            }
+
+            if (labels.size > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: [...labels],
+              });
+            }

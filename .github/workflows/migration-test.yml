@@ -1,0 +1,70 @@
+name: Migration Test
+
+on:
+  pull_request:
+    paths:
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/**'
+
+jobs:
+  test-migrations:
+    name: Test database migrations
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/testdb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run migrations
+        run: npx prisma migrate deploy
+
+      - name: Verify schema is in sync
+        run: |
+          npx prisma migrate diff \
+            --from-migrations ./prisma/migrations \
+            --to-schema-datamodel ./prisma/schema.prisma \
+            --exit-code || {
+              echo "::error::Schema and migrations are out of sync. Run 'npx prisma migrate dev' to create a new migration."
+              exit 1
+            }
+
+      - name: Run seed (if exists)
+        run: |
+          if [ -f "prisma/seed.ts" ] || [ -f "prisma/seed.js" ]; then
+            npx prisma db seed
+          else
+            echo "No seed file found, skipping"
+          fi
+
+      - name: Run tests
+        run: npm test -- --run
+        env:
+          NODE_ENV: test

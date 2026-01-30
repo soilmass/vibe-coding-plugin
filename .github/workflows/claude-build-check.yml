@@ -1,0 +1,55 @@
+name: Claude Build Failure Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: npm run build 2>&1 | tee build-output.txt
+
+      - name: Analyze Build Failure
+        if: steps.build.outcome == 'failure'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          max_turns: 5
+          allowed_tools: "Read,Grep,Glob"
+          prompt: |
+            The build failed. Analyze the build output in `build-output.txt` and:
+
+            1. Categorize errors:
+               - TypeScript errors (type mismatches, missing types)
+               - Next.js build errors (invalid config, route issues)
+               - Import errors (missing modules, circular deps)
+               - Other (ESLint, env vars, etc.)
+
+            2. For each error:
+               - Identify the file and line
+               - Explain why it failed
+               - Provide a specific fix
+
+            3. If there are Next.js 15 migration issues (params as Promises, fetch caching):
+               - Flag them specifically
+               - Show the exact code change needed
+
+            Format: Comment on the PR with the analysis grouped by category.

@@ -1,0 +1,90 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          max_turns: 10
+          allowed_tools: "Read,Grep,Glob,Bash(git diff*),Bash(npx tsc --noEmit),Bash(npx next lint*)"
+          prompt: |
+            Review this PR using the following checklist:
+
+            ## React 19 Correctness
+            - Uses `useActionState` (NOT `useFormState`)
+            - No hooks in Server Components
+            - `useFormStatus()` is in child component of `<form>`
+            - `ref` as prop (no `forwardRef`)
+            - `useRef(null)` argument required
+
+            ## Next.js 15 Patterns
+            - `params` and `searchParams` are awaited (Promises)
+            - `generateMetadata` params are awaited
+            - Fetch calls have explicit caching strategy
+            - `error.tsx` has `"use client"`
+
+            ## TypeScript Safety
+            - No `any` types
+            - Action return types match state types
+            - Zod schemas used for validation
+
+            ## Security
+            - Server Actions validate input with Zod
+            - Server Actions check auth
+            - No hardcoded secrets
+
+            ## Performance
+            - No unnecessary `"use client"`
+            - Data fetching in Server Components
+            - Parallel fetching with `Promise.all()`
+            - `<Suspense>` boundaries for streaming
+            - `next/image` used instead of `<img>` tags
+            - `next/font` used instead of external font links
+            - Dynamic imports for heavy client components
+
+            ## i18n
+            - `getTranslations` in Server Components
+            - `useTranslations` in Client Components
+            - No hardcoded user-facing strings
+
+            ## Accessibility
+            - Semantic HTML elements (`<nav>`, `<main>`, `<button>`)
+            - `aria-label` on icon-only buttons
+            - Form inputs have associated labels
+
+            ## State Management
+            - No Redux/Zustand for server data (fetch in Server Components)
+            - URL state with `nuqs` for shareable UI state
+
+            Output format: [CRITICAL|WARNING|SUGGESTION|GOOD] file:line — description
+            End with summary count.

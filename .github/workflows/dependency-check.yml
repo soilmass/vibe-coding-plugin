@@ -1,0 +1,64 @@
+name: Dependency Check
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday at 9:00 UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  audit:
+    name: Security Audit & Outdated Check
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run npm audit
+        id: audit
+        continue-on-error: true
+        run: |
+          npm audit --production 2>&1 | tee audit-report.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Check outdated packages
+        id: outdated
+        continue-on-error: true
+        run: |
+          npm outdated 2>&1 | tee outdated-report.txt || true
+
+      - name: Create issue if vulnerabilities found
+        if: steps.audit.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const audit = fs.readFileSync('audit-report.txt', 'utf8');
+            const outdated = fs.readFileSync('outdated-report.txt', 'utf8');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Security] Dependency audit — ${new Date().toISOString().slice(0, 10)}`,
+              labels: ['security', 'dependencies'],
+              body: [
+                '## npm audit',
+                '```',
+                audit.slice(0, 3000),
+                '```',
+                '',
+                '## Outdated packages',
+                '```',
+                outdated.slice(0, 3000),
+                '```',
+                '',
+                'Run `npm audit fix` to resolve automatically fixable issues.',
+              ].join('\n')
+            });

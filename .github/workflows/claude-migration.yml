@@ -1,0 +1,66 @@
+name: Claude Migration Guard
+
+on:
+  pull_request:
+    paths:
+      - 'prisma/schema.prisma'
+      - 'prisma/migrations/**'
+
+jobs:
+  migration-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Claude Migration Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          max_turns: 8
+          allowed_tools: "Read,Grep,Glob,Bash(git diff*)"
+          prompt: |
+            Review the Prisma schema and migration changes in this PR.
+
+            ## Safety Checks
+
+            ### CRITICAL (block merge)
+            - Dropping columns that may contain data (check for `DROP COLUMN`)
+            - Dropping tables with data
+            - Removing `@unique` constraints on populated fields
+            - Changing column types that could lose data (e.g., String → Int)
+
+            ### WARNING (flag for review)
+            - New required columns without `@default()` (will fail on existing rows)
+            - Missing `@@index` on foreign key columns
+            - Removing optional fields (data loss)
+            - Changing `onDelete` behavior
+
+            ### INFO
+            - New models (confirm naming conventions: singular PascalCase)
+            - New relations (confirm proper foreign keys and indexes)
+            - New enums (confirm values make sense)
+
+            ## Analysis Steps
+            1. Read `prisma/schema.prisma` changes via git diff
+            2. Read any new migration SQL files
+            3. Check for data loss patterns
+            4. Verify indexes on foreign keys
+            5. Check defaults for new required columns
+
+            Output format:
+            - [CRITICAL] description — action needed
+            - [WARNING] description — review recommended
+            - [INFO] description — noted
+
+            If any CRITICAL issues found, clearly state: "BLOCKING: Do not merge until resolved."

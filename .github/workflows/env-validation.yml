@@ -1,0 +1,57 @@
+name: Env Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-env:
+    name: Validate environment variables
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check .env.example exists
+        run: |
+          if [ ! -f .env.example ]; then
+            echo "::error::.env.example file not found"
+            exit 1
+          fi
+
+      - name: Verify env vars are referenced in code
+        run: |
+          EXIT_CODE=0
+          while IFS= read -r line; do
+            # Skip comments and empty lines
+            [[ "$line" =~ ^#.*$ ]] && continue
+            [[ -z "$line" ]] && continue
+
+            # Extract variable name (before =)
+            VAR_NAME=$(echo "$line" | cut -d'=' -f1 | xargs)
+            [[ -z "$VAR_NAME" ]] && continue
+
+            # Search for usage in src/ and app/ directories
+            if ! grep -rq "$VAR_NAME" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/ app/ 2>/dev/null; then
+              # Also check next.config, env validation, and prisma schema
+              if ! grep -rq "$VAR_NAME" next.config.* src/env.* prisma/schema.prisma sentry.*.config.* 2>/dev/null; then
+                echo "::warning::Environment variable $VAR_NAME in .env.example is not referenced in code"
+              fi
+            fi
+          done < .env.example
+
+          exit $EXIT_CODE
+
+      - name: Check for undocumented env vars
+        run: |
+          # Find process.env references not in .env.example
+          grep -roh 'process\.env\.\w\+' --include="*.ts" --include="*.tsx" src/ app/ 2>/dev/null | \
+            sed 's/process\.env\.//' | \
+            sort -u | \
+            while read -r VAR; do
+              if ! grep -q "^${VAR}=" .env.example 2>/dev/null; then
+                # Skip NEXT_PUBLIC vars that might be in other configs and NODE_ENV
+                if [[ "$VAR" != "NODE_ENV" ]]; then
+                  echo "::warning::process.env.$VAR used in code but not documented in .env.example"
+                fi
+              fi
+            done

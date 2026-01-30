@@ -1,0 +1,33 @@
+# Claude Code local/private files
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/state/
+.claude/commands
+__pycache__/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Shell dotfiles (not project files)
+.bash_profile
+.bashrc
+.zshrc
+.zprofile
+.profile
+.gitconfig
+.gitmodules
+.ripgreprc
+
+# Node (future)
+node_modules/
+.next/
+out/

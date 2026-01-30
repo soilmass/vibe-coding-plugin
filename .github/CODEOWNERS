@@ -1,0 +1,4 @@
+# Plugin system
+.claude/skills/** @edox1
+.claude/agents/** @edox1
+.claude/hooks/**  @edox1
