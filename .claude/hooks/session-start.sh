@@ -147,3 +147,5 @@ fi
 
 # Socket.io (real-time)
 [ -f "package.json" ] && grep -q '"socket.io"' package.json && echo "HAS_SOCKETIO=true" >> "$ENV_FILE"
+
+exit 0

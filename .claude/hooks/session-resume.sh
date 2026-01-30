@@ -32,3 +32,5 @@ fi
 
 # Check if node_modules is fresh (in case npm install was run externally)
 [ -d "node_modules" ] && echo "HAS_NODE_MODULES=true" >> "$ENV_FILE"
+
+exit 0

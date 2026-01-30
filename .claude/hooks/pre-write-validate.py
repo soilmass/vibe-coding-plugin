@@ -102,12 +102,18 @@ def check_deprecated_patterns(file_path: str, content: str) -> list[str]:
         )
 
     # Warn on cookies() or headers() called without await in Next.js 15
-    if re.search(r'(?<!await\s)\b(cookies|headers)\s*\(\s*\)', content):
-        if not re.search(r'await\s+(cookies|headers)\s*\(\s*\)', content):
+    # Check if any call is NOT preceded by await (with flexible whitespace)
+    calls = re.finditer(r'\b(cookies|headers)\s*\(\s*\)', content)
+    for call in calls:
+        start = call.start()
+        # Look at the text before this call for 'await'
+        preceding = content[max(0, start - 20):start]
+        if not re.search(r'await\s+$', preceding):
             warnings.append(
-                f"WARNING: cookies() or headers() may not be awaited in {file_path}. "
+                f"WARNING: {call.group(1)}() may not be awaited in {file_path}. "
                 "In Next.js 15, cookies() and headers() return Promises — await them."
             )
+            break  # One warning is enough
 
     # Warn if params destructured without await in page/layout files
     basename = os.path.basename(file_path)
@@ -125,14 +131,21 @@ def check_deprecated_patterns(file_path: str, content: str) -> list[str]:
 
 
 def check_async_client_components(file_path: str, content: str) -> list[str]:
-    """Block async functions in 'use client' files."""
+    """Block async component functions in 'use client' files.
+
+    Async arrow functions inside callbacks/event handlers are valid in client
+    components (e.g., onClick={async () => ...}). Only top-level async function
+    declarations (component definitions) are problematic.
+    """
     warnings = []
     if '"use client"' not in content and "'use client'" not in content:
         return warnings
 
-    if re.search(r'\basync\s+function\b', content) or re.search(r'\basync\s*\(', content):
+    # Match top-level async function declarations (component definitions)
+    # but NOT async arrow callbacks like: onClick={async () => ...}
+    if re.search(r'^export\s+(default\s+)?async\s+function\b', content, re.MULTILINE):
         warnings.append(
-            f"BLOCKED: Async function in 'use client' file {file_path}. "
+            f"BLOCKED: Async component function in 'use client' file {file_path}. "
             "Only Server Components can be async. Remove async or remove 'use client'."
         )
     return warnings

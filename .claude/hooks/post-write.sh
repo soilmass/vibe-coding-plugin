@@ -39,8 +39,10 @@ fi
 case "$FILE_PATH" in
   *.ts|*.tsx)
     if command -v npx &>/dev/null && [ -f "tsconfig.json" ]; then
+      set +e
       TSC_OUTPUT=$(timeout 30 npx tsc --noEmit 2>&1)
       TSC_EXIT=$?
+      set -e
       if [ $TSC_EXIT -ne 0 ]; then
         if [ $TSC_EXIT -eq 124 ]; then
           echo "tsc timed out (>30s) while checking $FILE_PATH." >&2

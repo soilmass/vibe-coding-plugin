@@ -47,7 +47,7 @@ fi
 ([ -f "playwright.config.ts" ] || [ -f "playwright.config.js" ]) && echo "Testing: Playwright (E2E)" >&2
 
 # Middleware
-[ -f "src/middleware.ts" ] || [ -f "middleware.ts" ] && echo "Middleware: present" >&2
+{ [ -f "src/middleware.ts" ] || [ -f "middleware.ts" ]; } && echo "Middleware: present" >&2
 
 # Active git branch
 if [ -d ".git" ]; then
