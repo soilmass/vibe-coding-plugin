@@ -434,6 +434,231 @@ export function AvatarGroup({
 }
 ```
 
+## Microinteractions & Visual Polish
+
+Default shadcn components look clean. Premium shadcn components feel alive — dialogs spring in, cards stagger on load, buttons have depth, and toasts slide with physics.
+
+### Dialog with spring animation
+```tsx
+"use client";
+
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Dialog,
+  DialogContent,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
+export function AnimatedDialog({
+  open,
+  onOpenChange,
+  children,
+  title,
+  description,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AnimatePresence>
+        {open && (
+          <DialogPortal forceMount>
+            <DialogOverlay asChild>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+              />
+            </DialogOverlay>
+            <DialogContent asChild forceMount>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: 5 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background p-6 shadow-2xl"
+              >
+                <DialogTitle>{title}</DialogTitle>
+                {description && <DialogDescription>{description}</DialogDescription>}
+                {children}
+              </motion.div>
+            </DialogContent>
+          </DialogPortal>
+        )}
+      </AnimatePresence>
+    </Dialog>
+  );
+}
+```
+
+### Card grid with stagger
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+
+const container = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.06 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 },
+  },
+};
+
+export function StaggeredCardGrid({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// Wrap each card child
+export function StaggeredCard({ children }: { children: React.ReactNode }) {
+  return <motion.div variants={item}>{children}</motion.div>;
+}
+```
+
+### Button with ripple effect
+```tsx
+"use client";
+
+import { useState, type MouseEvent } from "react";
+import { Button, type ButtonProps } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export function RippleButton({ className, children, ...props }: ButtonProps) {
+  const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
+
+  function handleClick(e: MouseEvent<HTMLButtonElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ripple = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      id: Date.now(),
+    };
+    setRipples((prev) => [...prev, ripple]);
+    setTimeout(() => setRipples((prev) => prev.filter((r) => r.id !== ripple.id)), 600);
+    props.onClick?.(e);
+  }
+
+  return (
+    <Button
+      className={cn("relative overflow-hidden", className)}
+      onClick={handleClick}
+      {...props}
+    >
+      {children}
+      {ripples.map((ripple) => (
+        <span
+          key={ripple.id}
+          className="absolute animate-[ripple_0.6s_ease-out] rounded-full bg-white/25"
+          style={{
+            left: ripple.x - 50,
+            top: ripple.y - 50,
+            width: 100,
+            height: 100,
+          }}
+        />
+      ))}
+    </Button>
+  );
+}
+
+// Add to globals.css:
+// @keyframes ripple { from { transform: scale(0); opacity: 1; } to { transform: scale(3); opacity: 0; } }
+```
+
+### Card with hover lift and glow
+```tsx
+import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+
+export function HoverCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      className={cn(
+        "transition-all duration-300 ease-out",
+        "hover:-translate-y-1 hover:shadow-xl",
+        "hover:shadow-primary/5 hover:border-primary/20",
+        className
+      )}
+    >
+      {children}
+    </Card>
+  );
+}
+```
+
+### Sheet/Drawer with custom spring
+```tsx
+"use client";
+
+// Vaul drawer already has spring physics — configure for premium feel
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+
+export function PremiumDrawer({ children, trigger }: { children: React.ReactNode; trigger: React.ReactNode }) {
+  return (
+    <Drawer
+      shouldScaleBackground
+      // Vaul spring config for buttery feel
+    >
+      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+      <DrawerContent className="max-h-[85vh]">
+        <div className="mx-auto mt-4 h-1.5 w-12 rounded-full bg-muted" />
+        <div className="p-4">{children}</div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+```
+
+### Toast with entrance animation
+```tsx
+// Sonner already animates, but enhance with custom styling
+import { Toaster } from "@/components/ui/sonner";
+
+// In root layout — configure for premium feel
+<Toaster
+  position="bottom-right"
+  toastOptions={{
+    classNames: {
+      toast: "rounded-xl border shadow-lg backdrop-blur-sm bg-background/95",
+      title: "font-semibold",
+      description: "text-muted-foreground",
+      actionButton: "bg-primary text-primary-foreground",
+    },
+  }}
+/>
+```
+
 ## Composes With
 - `tailwind-v4` — theming via CSS custom properties
 - `react-forms` — shadcn Form component wraps react-hook-form
@@ -441,3 +666,4 @@ export function AvatarGroup({
 - `dark-mode` — shadcn uses semantic color tokens that auto-switch
 - `visual-design` — color harmony, elevation, spacing tokens
 - `landing-patterns` — premium variants used in marketing pages
+- `animation` — Motion library for dialog/card/stagger animations

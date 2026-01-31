@@ -102,6 +102,222 @@ export async function createOrder(formData: FormData) {
 }
 ```
 
+### Event taxonomy
+
+Use `noun.verb` naming for all events. Define a typed event map with discriminated unions to
+catch typos at compile time and enforce consistent property shapes.
+
+```ts
+// lib/analytics/events.ts
+
+type AnalyticsEvent =
+  | { event: "user.signed_up"; properties: { method: "email" | "google" | "github" } }
+  | { event: "user.logged_in"; properties: { method: "email" | "google" | "github" } }
+  | { event: "user.deleted_account"; properties: { reason?: string } }
+  | { event: "cart.item_added"; properties: { productId: string; price: number; quantity: number } }
+  | { event: "cart.item_removed"; properties: { productId: string } }
+  | { event: "checkout.started"; properties: { cartTotal: number; itemCount: number } }
+  | { event: "checkout.completed"; properties: { orderId: string; total: number; currency: string } }
+  | { event: "checkout.abandoned"; properties: { cartTotal: number; step: string } }
+  | { event: "page.viewed"; properties: { path: string; referrer?: string } }
+  | { event: "feature.used"; properties: { name: string; variant?: string } };
+
+// Type-safe capture function — compile error on unknown events or wrong properties
+export function trackEvent<E extends AnalyticsEvent["event"]>(
+  event: E,
+  properties: Extract<AnalyticsEvent, { event: E }>["properties"],
+) {
+  // Implementation swapped by environment (client vs server)
+  if (typeof window !== "undefined") {
+    const posthog = (await import("posthog-js")).default;
+    posthog.capture(event, properties);
+  }
+}
+```
+
+Usage in a client component:
+
+```tsx
+"use client";
+import { trackEvent } from "@/lib/analytics/events";
+
+export function AddToCartButton({ productId, price }: { productId: string; price: number }) {
+  return (
+    <button
+      onClick={() => {
+        // Type-safe — wrong property names or types cause compile errors
+        trackEvent("cart.item_added", { productId, price, quantity: 1 });
+      }}
+    >
+      Add to Cart
+    </button>
+  );
+}
+```
+
+Naming rules:
+- **Nouns**: `user`, `cart`, `checkout`, `page`, `feature`, `subscription`, `invoice`
+- **Verbs**: `signed_up`, `logged_in`, `created`, `completed`, `viewed`, `clicked`, `failed`
+- Always lowercase, snake_case after the dot: `checkout.payment_failed`, not `Checkout.PaymentFailed`
+- Prefix internal/debug events with `debug.` to filter them in dashboards
+
+### Consent-gated tracking
+
+Never fire analytics events before the user grants consent. Integrate with a consent
+store that the cookie banner writes to.
+
+```ts
+// lib/analytics/consent.ts
+import { create } from "zustand";
+
+type ConsentCategory = "necessary" | "analytics" | "marketing";
+
+type ConsentState = {
+  categories: Record<ConsentCategory, boolean>;
+  setConsent: (categories: Record<ConsentCategory, boolean>) => void;
+  hasConsent: (category: ConsentCategory) => boolean;
+};
+
+export const useConsentStore = create<ConsentState>((set, get) => ({
+  categories: { necessary: true, analytics: false, marketing: false },
+  setConsent: (categories) => set({ categories }),
+  hasConsent: (category) => get().categories[category],
+}));
+```
+
+Wrap the analytics provider so it only initializes after consent:
+
+```tsx
+// components/analytics/ConsentGatedAnalytics.tsx
+"use client";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+import { useEffect, useState } from "react";
+import { useConsentStore } from "@/lib/analytics/consent";
+
+export function ConsentGatedAnalytics({ children }: { children: React.ReactNode }) {
+  const hasConsent = useConsentStore((s) => s.hasConsent);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (hasConsent("analytics") && !initialized) {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST!,
+        capture_pageview: true,
+        persistence: "localStorage+cookie",
+        opt_out_capturing_by_default: false,
+      });
+      setInitialized(true);
+    }
+
+    if (!hasConsent("analytics") && initialized) {
+      posthog.opt_out_capturing();
+    }
+  }, [hasConsent, initialized]);
+
+  if (!initialized) return <>{children}</>;
+  return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
+}
+```
+
+Guard individual tracking calls as well for defense-in-depth:
+
+```ts
+// lib/analytics/track.ts
+import posthog from "posthog-js";
+import { useConsentStore } from "@/lib/analytics/consent";
+
+export function safeCapture(event: string, properties?: Record<string, unknown>) {
+  if (useConsentStore.getState().hasConsent("analytics")) {
+    posthog.capture(event, properties);
+  }
+}
+```
+
+### Server-side tracking with after()
+
+Use the Next.js `after()` hook to fire server-side analytics without blocking the
+response. This is preferred over `await posthog.flush()` for non-critical tracking.
+
+```tsx
+// actions/checkout.ts
+"use server";
+import { after } from "next/server";
+import { PostHog } from "posthog-node";
+import { auth } from "@/lib/auth";
+import { revalidateTag } from "next/cache";
+
+const posthog = new PostHog(process.env.POSTHOG_API_KEY!, {
+  host: process.env.POSTHOG_HOST!,
+  flushAt: 1,        // Flush immediately in serverless
+  flushInterval: 0,  // No batching delay
+});
+
+export async function completeCheckout(formData: FormData) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const order = await db.order.create({ /* ... */ });
+
+  revalidateTag("orders");
+
+  // Fire-and-forget: runs AFTER the response is sent to the client
+  after(async () => {
+    posthog.capture({
+      distinctId: session.user.id,
+      event: "checkout.completed",
+      properties: {
+        orderId: order.id,
+        total: order.total,
+        currency: order.currency,
+        itemCount: order.items.length,
+      },
+    });
+    await posthog.flush();
+  });
+
+  return { success: true, orderId: order.id };
+}
+```
+
+Use `after()` in Route Handlers too:
+
+```tsx
+// app/api/webhooks/stripe/route.ts
+import { after } from "next/server";
+import { PostHog } from "posthog-node";
+
+const posthog = new PostHog(process.env.POSTHOG_API_KEY!, {
+  host: process.env.POSTHOG_HOST!,
+});
+
+export async function POST(request: Request) {
+  const event = await verifyStripeWebhook(request);
+
+  // Process webhook synchronously
+  await handleStripeEvent(event);
+
+  // Track asynchronously — does not delay the 200 response to Stripe
+  after(async () => {
+    posthog.capture({
+      distinctId: event.data.object.customer as string,
+      event: "subscription.renewed",
+      properties: {
+        plan: event.data.object.plan.id,
+        amount: event.data.object.amount_paid,
+      },
+    });
+    await posthog.flush();
+  });
+
+  return Response.json({ received: true });
+}
+```
+
+When to use `after()` vs `await flush()`:
+- **`after()`** — default choice. Non-blocking, runs after response. Best for analytics, logging, notifications.
+- **`await flush()`** — only when the event MUST be confirmed sent before the response (e.g., billing audit trail where data loss is unacceptable).
+
 ## Anti-pattern
 
 ```tsx

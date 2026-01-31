@@ -370,8 +370,150 @@ onChange={(e) => startTransition(() => saveDraft({ title: e.target.value }))}
 - [ ] Dynamic arrays use stable keys (not array index)
 - [ ] Inline edit supports Enter to save, Escape to cancel
 
+### Microinteractions & Visual Polish
+
+#### Animated wizard step transitions
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function WizardStepTransition({ step, direction, children }: {
+  step: number; direction: 1 | -1; children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence mode="wait" custom={direction}>
+      <motion.div
+        key={step}
+        custom={direction}
+        initial={{ opacity: 0, x: direction * 60 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: direction * -60 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+```
+
+#### Animated progress bar for wizard steps
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+export function WizardProgress({ currentStep, totalSteps }: {
+  currentStep: number; totalSteps: number;
+}) {
+  return (
+    <div className="flex gap-2">
+      {Array.from({ length: totalSteps }).map((_, i) => (
+        <div key={i} className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+          <motion.div
+            className="absolute inset-y-0 left-0 rounded-full bg-primary"
+            initial={{ width: "0%" }}
+            animate={{ width: i < currentStep ? "100%" : i === currentStep ? "50%" : "0%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+#### Smooth conditional field expand/collapse
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function ConditionalField({ visible, children }: {
+  visible: boolean; children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="overflow-hidden"
+        >
+          <div className="pt-3">{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Auto-save visual feedback
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Subtle pulse on the save indicator during debounce
+export function AutoSaveIndicator({ isPending, lastSaved }: {
+  isPending: boolean; lastSaved: Date | null;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <motion.div
+        className="h-1.5 w-1.5 rounded-full"
+        animate={{
+          backgroundColor: isPending ? "oklch(0.7 0.15 85)" : "oklch(0.7 0.15 142)",
+          scale: isPending ? [1, 1.4, 1] : 1,
+        }}
+        transition={isPending ? { repeat: Infinity, duration: 1 } : { duration: 0.3 }}
+      />
+      {isPending ? "Saving..." : lastSaved ? `Saved ${formatRelative(lastSaved)}` : "Draft"}
+    </div>
+  );
+}
+```
+
+#### Inline edit with smooth transition
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function InlineEditAnimated({ value, editing, onEdit, children }: {
+  value: string; editing: boolean; onEdit: () => void; children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence mode="wait">
+      {editing ? (
+        <motion.div
+          key="editing"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          className="ring-2 ring-primary/20 rounded-md"
+        >
+          {children}
+        </motion.div>
+      ) : (
+        <motion.span
+          key="display"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onEdit}
+          className="cursor-pointer rounded-md px-1 transition-colors hover:bg-muted"
+        >
+          {value}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
 ## Composes With
 - `react-forms` — basic form patterns and useActionState
 - `react-server-actions` — Server Actions for auto-save and wizard submission
 - `shadcn` — Calendar, Command, Popover, Button components
 - `state-management` — URL state with nuqs for wizard steps
+- `animation` — step transitions, field expand/collapse, save feedback
+- `loading-transitions` — wizard step transitions, form submission states

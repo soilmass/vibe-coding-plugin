@@ -320,6 +320,153 @@ function handleDelete(id: string) {
 // Queue: Sonner auto-stacks toasts, max visible configurable via Toaster
 ```
 
+### Premium Notification UI Polish
+
+#### Animated unread badge with pop
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function NotificationBadge({ count }: { count: number }) {
+  return (
+    <AnimatePresence>
+      {count > 0 && (
+        <motion.span
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 500, damping: 25 }}
+          className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white"
+        >
+          {count > 9 ? "9+" : count}
+        </motion.span>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Notification items with slide-in stagger
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+export function NotificationList({ notifications }: { notifications: Notification[] }) {
+  return (
+    <div className="divide-y">
+      {notifications.map((n, i) => (
+        <motion.div
+          key={n.id}
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 25,
+            delay: i * 0.04,
+          }}
+          className={cn(
+            "flex gap-3 p-3 transition-colors hover:bg-muted/50",
+            !n.read && "bg-primary/5"
+          )}
+        >
+          <div className={cn(
+            "mt-1 h-2 w-2 shrink-0 rounded-full",
+            n.read ? "bg-transparent" : "bg-primary"
+          )} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{n.title}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+```
+
+#### Mark-as-read with visual feedback
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { useOptimistic, useTransition } from "react";
+
+export function NotificationItem({ notification, markRead }: {
+  notification: Notification;
+  markRead: (id: string) => Promise<void>;
+}) {
+  const [optimistic, setOptimistic] = useOptimistic(notification);
+  const [, startTransition] = useTransition();
+
+  function handleClick() {
+    if (optimistic.read) return;
+    startTransition(async () => {
+      setOptimistic({ ...notification, read: true });
+      await markRead(notification.id);
+    });
+  }
+
+  return (
+    <motion.button
+      onClick={handleClick}
+      animate={{ backgroundColor: optimistic.read ? "transparent" : "var(--color-primary-5)" }}
+      className="w-full text-left p-3"
+    >
+      <div className="flex items-start gap-3">
+        <motion.div
+          animate={{ scale: optimistic.read ? 0 : 1 }}
+          className="mt-1.5 h-2 w-2 rounded-full bg-primary"
+        />
+        <div>
+          <p className="text-sm font-medium">{optimistic.title}</p>
+          <p className="text-xs text-muted-foreground">{optimistic.body}</p>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+```
+
+#### Toast with countdown progress bar
+```tsx
+// Sonner custom toast with visual countdown
+import { toast } from "sonner";
+
+export function undoToast(message: string, onUndo: () => void) {
+  toast(message, {
+    action: { label: "Undo", onClick: onUndo },
+    duration: 5000,
+    // Sonner supports className for custom styling
+    className: "group",
+    // Add progress bar via CSS
+    style: {
+      "--toast-progress": "scaleX(1)",
+      animation: "toast-countdown 5s linear forwards",
+    } as React.CSSProperties,
+  });
+}
+```
+
+```css
+/* Toast countdown progress bar */
+.sonner-toast::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+  transform-origin: left;
+  animation: toast-countdown 5s linear forwards;
+}
+
+@keyframes toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+```
+
 ## Composes With
 - `background-jobs` — async notification delivery with Inngest
 - `prisma` — notification and preference models
@@ -328,3 +475,4 @@ function handleDelete(id: string) {
 - `email` — email notification channel
 - `real-time` — live notification delivery via SSE/Pusher
 - `pwa` — service worker for push notification delivery
+- `animation` — badge pop, item stagger, mark-as-read transitions

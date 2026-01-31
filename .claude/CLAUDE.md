@@ -2,11 +2,11 @@
 
 ## Architecture
 
-This project uses a comprehensive Claude Code plugin with 69 skills, 18 agents, and 9 hooks.
+This project uses a comprehensive Claude Code plugin with 76 skills, 18 agents, and 10 hooks.
 
-### Skills (69 total)
+### Skills (76 total)
 
-**Reference Skills** (59 — teach patterns, auto-loaded for "how/why" questions):
+**Reference Skills** (66 — teach patterns, auto-loaded for "how/why" questions):
 - `react-server-components`, `react-client-components`, `react-server-actions`, `react-forms`, `react-suspense`
 - `nextjs-routing`, `nextjs-data`, `nextjs-middleware`, `nextjs-metadata`
 - `tailwind-v4`, `typescript-patterns`
@@ -24,13 +24,15 @@ This project uses a comprehensive Claude Code plugin with 69 skills, 18 agents, 
 - `data-tables`, `advanced-form-ux`, `drag-drop`, `rich-text`
 - `layout-patterns`, `composition-patterns`
 - `responsive-design`, `virtualization`
+- `creative-scrolling`, `advanced-typography`, `cursor-effects`
+- `webgl-3d`, `svg-canvas`, `loading-transitions`, `sound-design`
 
 **Action Skills** (8 — run CLIs, user-triggered for "build/create" tasks):
 - `scaffold`, `shadcn`, `prisma`, `auth`, `turbo`, `testing`, `deploy`, `database-seeding`
 
 **Orchestrators** (2 — chain skills together):
 - `vibe` — natural language intent router (classifies intent, selects 1-3 skills)
-- `flow` — workflow pipelines (build, feature, harden, ship, audit, refactor, i18n, a11y, migration, seo, full-audit, observe, full-feature, security-full, db-health, deps-check, type-check, test-gaps, resilience, gdpr, api-first, b2b-saas, content-site, search-notify, mobile-first, design-system, perf-audit, bundle-optimize, docs-sprint, ui-polish, landing-polish, interactive-feature)
+- `flow` — workflow pipelines (build, feature, harden, ship, audit, refactor, i18n, a11y, migration, seo, full-audit, observe, full-feature, security-full, db-health, deps-check, type-check, test-gaps, resilience, gdpr, api-first, b2b-saas, content-site, search-notify, mobile-first, design-system, perf-audit, bundle-optimize, docs-sprint, ui-polish, landing-polish, interactive-feature, ui-premium)
 
 ### Lifecycle Layers
 | Layer | Skills |
@@ -38,7 +40,7 @@ This project uses a comprehensive Claude Code plugin with 69 skills, 18 agents, 
 | Foundation | `scaffold`, `turbo`, `env-validation`, `docker-dev` |
 | Infrastructure | `prisma`, `auth`, `api-routes`, `database-seeding`, `email`, `background-jobs`, `file-uploads`, `rate-limiting`, `logging`, `payments`, `webhooks`, `secrets-management`, `search`, `notifications`, `multi-tenancy`, `cms` |
 | Architecture | `nextjs-routing`, `nextjs-middleware`, `nextjs-data`, `caching`, `i18n`, `edge-computing`, `trpc`, `layout-patterns`, `composition-patterns` |
-| UI | `react-server-components`, `react-client-components`, `shadcn`, `tailwind-v4`, `storybook`, `visual-design`, `landing-patterns`, `animation`, `dark-mode`, `charts` |
+| UI | `react-server-components`, `react-client-components`, `shadcn`, `tailwind-v4`, `storybook`, `visual-design`, `landing-patterns`, `animation`, `dark-mode`, `charts`, `creative-scrolling`, `advanced-typography`, `cursor-effects`, `webgl-3d`, `svg-canvas`, `loading-transitions`, `sound-design` |
 | Interaction | `react-forms`, `react-server-actions`, `react-suspense`, `error-handling`, `state-management`, `data-tables`, `advanced-form-ux`, `drag-drop`, `rich-text` |
 | Polish | `nextjs-metadata`, `typescript-patterns`, `security`, `accessibility`, `seo-advanced`, `analytics`, `real-time`, `image-optimization`, `observability`, `compliance`, `feature-flags`, `api-documentation`, `pwa`, `responsive-design`, `virtualization` |
 | Quality | `testing`, `deploy`, `performance`, `visual-regression` |
@@ -77,14 +79,15 @@ Use agents judiciously due to token cost.
 - `full-audit` pipeline runs up to 17 auditor agents (2 skip based on project state)
 - `migration-assistant` is a planning tool, not included in audit pipelines
 
-### Hooks
+### Hooks (10 total)
 - **SessionStart** — detects project state (versions, tools, git)
+- **SessionResume** — lightweight refresh on session resume (dev server status, git state)
 - **PreToolUse (Write/Edit)** — validates server/client boundaries, scans for secrets, blocks .env.local writes, blocks console.log in Server Actions
 - **PreToolUse (Bash)** — auto-allows safe commands, blocks dangerous ones
 - **PostToolUse (Write/Edit)** — auto-formats with Prettier, runs tsc, warns on next.config changes
 - **PostToolUse (Bash)** — regenerates Prisma client after install, reminds about schema changes
 - **Stop** — verifies TypeScript compiles, warns about lint errors and uncommitted changes
-- **SubagentStop** — evaluates subagent output for actionability and checklist adherence
+- **SubagentStop** — prompt hook: evaluates subagent output for actionability and checklist adherence
 - **PreCompact** — preserves project context across context compaction
 - **SessionEnd** — saves session summary to `.claude/state/last-session.md`
 

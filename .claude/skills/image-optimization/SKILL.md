@@ -230,9 +230,156 @@ export function LightboxGallery({ images }: { images: { src: string; alt: string
 // npx shadcn@latest add carousel
 ```
 
+### Premium Image Presentation
+
+#### Blur-to-sharp reveal animation
+```tsx
+"use client";
+import { useState } from "react";
+import Image from "next/image";
+import { motion } from "motion/react";
+
+export function RevealImage({ src, alt, ...props }: React.ComponentProps<typeof Image>) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <motion.div
+      className="relative overflow-hidden"
+      animate={{ filter: loaded ? "blur(0px)" : "blur(12px)" }}
+      transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
+      <Image
+        src={src}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        {...props}
+      />
+      {/* Brightness bump on reveal */}
+      <motion.div
+        className="pointer-events-none absolute inset-0 bg-white"
+        initial={{ opacity: 0.2 }}
+        animate={{ opacity: loaded ? 0 : 0.2 }}
+        transition={{ duration: 0.4 }}
+      />
+    </motion.div>
+  );
+}
+```
+
+#### Image zoom-in reveal on scroll
+```tsx
+"use client";
+import { motion, useInView } from "motion/react";
+import Image from "next/image";
+import { useRef } from "react";
+
+export function ScrollRevealImage({ src, alt, ...props }: React.ComponentProps<typeof Image>) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-10%" });
+
+  return (
+    <div ref={ref} className="overflow-hidden rounded-xl">
+      <motion.div
+        initial={{ scale: 1.15, opacity: 0 }}
+        animate={isInView ? { scale: 1, opacity: 1 } : {}}
+        transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <Image src={src} alt={alt} {...props} />
+      </motion.div>
+    </div>
+  );
+}
+```
+
+#### Hero image with gradient overlay + parallax
+```tsx
+"use client";
+import { motion, useScroll, useTransform } from "motion/react";
+import Image from "next/image";
+import { useRef } from "react";
+
+export function ParallaxHeroImage({ src, alt }: { src: string; alt: string }) {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.3]);
+
+  return (
+    <div ref={ref} className="relative h-[70vh] overflow-hidden">
+      <motion.div style={{ y }} className="absolute inset-0">
+        <Image src={src} alt={alt} fill className="object-cover" priority sizes="100vw" />
+      </motion.div>
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+      <motion.div style={{ opacity }} className="absolute inset-0" />
+    </div>
+  );
+}
+```
+
+#### Animated lightbox entrance
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function AnimatedLightbox({ open, onClose, src, alt }: {
+  open: boolean; onClose: () => void; src: string; alt: string;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-4 z-50 flex items-center justify-center"
+          >
+            <Image src={src} alt={alt} fill className="object-contain" sizes="90vw" />
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Image error state with fallback
+```tsx
+"use client";
+import { useState } from "react";
+import Image from "next/image";
+import { ImageOff } from "lucide-react";
+
+export function SafeImage({ src, alt, ...props }: React.ComponentProps<typeof Image>) {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center rounded-lg bg-muted">
+        <ImageOff className="h-8 w-8 text-muted-foreground/40" />
+      </div>
+    );
+  }
+
+  return <Image src={src} alt={alt} onError={() => setError(true)} {...props} />;
+}
+```
+
 ## Composes With
 - `performance` — images are the biggest LCP factor
 - `nextjs-metadata` — OG images for social sharing
 - `accessibility` — alt text is required for screen readers
 - `file-uploads` — user-uploaded images need optimization too
 - `responsive-design` — responsive image sizes and grid layouts
+- `animation` — image reveal transitions, parallax effects
+- `creative-scrolling` — scroll-driven image parallax
+- `visual-design` — gradient overlays, image error states

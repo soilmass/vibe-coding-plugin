@@ -77,11 +77,143 @@ export async function sendWelcome(email: string, name: string) {
 }
 ```
 
+### Email template composition
+```tsx
+// emails/_components/email-layout.tsx
+import { Html, Head, Body, Container, Img, Text, Hr, Section } from "@react-email/components";
+
+interface EmailLayoutProps {
+  preview?: string;
+  children: React.ReactNode;
+}
+
+export function EmailLayout({ preview, children }: EmailLayoutProps) {
+  return (
+    <Html>
+      <Head />
+      <Body style={{ fontFamily: "sans-serif", background: "#f6f6f6", padding: "20px" }}>
+        <Container style={{ background: "#fff", borderRadius: "8px", padding: "32px" }}>
+          <Section>
+            <Img src="https://myapp.com/logo.png" width={120} height={40} alt="MyApp" />
+          </Section>
+          <Hr style={{ margin: "20px 0" }} />
+          {children}
+          <Hr style={{ margin: "20px 0" }} />
+          <Text style={{ fontSize: "12px", color: "#999" }}>
+            MyApp Inc. · 123 Main St · You received this because you have an account.
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+
+// emails/welcome.tsx — uses shared layout
+import { Text, Button } from "@react-email/components";
+import { EmailLayout } from "./_components/email-layout";
+
+interface WelcomeEmailProps {
+  name: string;
+  loginUrl: string;
+}
+
+export function WelcomeEmail({ name, loginUrl }: WelcomeEmailProps) {
+  return (
+    <EmailLayout preview={`Welcome, ${name}!`}>
+      <Text>Hi {name},</Text>
+      <Text>Your account has been created. Click below to get started.</Text>
+      <Button href={loginUrl} style={{ background: "#000", color: "#fff", padding: "12px 20px" }}>
+        Sign In
+      </Button>
+    </EmailLayout>
+  );
+}
+
+// emails/password-reset.tsx — another template using the same layout
+import { Text, Button } from "@react-email/components";
+import { EmailLayout } from "./_components/email-layout";
+
+interface PasswordResetEmailProps {
+  resetUrl: string;
+  expiresInMinutes: number;
+}
+
+export function PasswordResetEmail({ resetUrl, expiresInMinutes }: PasswordResetEmailProps) {
+  return (
+    <EmailLayout preview="Reset your password">
+      <Text>You requested a password reset.</Text>
+      <Text>This link expires in {expiresInMinutes} minutes.</Text>
+      <Button href={resetUrl} style={{ background: "#000", color: "#fff", padding: "12px 20px" }}>
+        Reset Password
+      </Button>
+      <Text style={{ fontSize: "13px", color: "#666" }}>
+        If you didn&apos;t request this, ignore this email.
+      </Text>
+    </EmailLayout>
+  );
+}
+```
+
+### Error handling and retry
+```tsx
+// src/lib/email.ts
+import { Resend } from "resend";
+import { env } from "@/env";
+import { logger } from "@/lib/logger";
+
+export const resend = new Resend(env.RESEND_API_KEY);
+
+export async function sendEmail(params: Parameters<typeof resend.emails.send>[0]) {
+  try {
+    const { data, error } = await resend.emails.send(params);
+    if (error) {
+      logger.error("Email send failed", { error, to: params.to });
+      throw new Error(error.message);
+    }
+    return data;
+  } catch (err) {
+    logger.error("Email transport error", { err, to: params.to });
+    throw err;
+  }
+}
+
+// src/inngest/functions/send-email.ts — retry with exponential backoff
+import { inngest } from "@/lib/inngest";
+import { sendEmail } from "@/lib/email";
+import { WelcomeEmail } from "@/emails/welcome";
+
+export const sendWelcomeEmail = inngest.createFunction(
+  {
+    id: "send-welcome-email",
+    retries: 3, // retries with exponential backoff by default
+  },
+  { event: "user/created" },
+  async ({ event, step }) => {
+    await step.run("send-email", async () => {
+      await sendEmail({
+        from: "App <noreply@myapp.com>",
+        to: event.data.email,
+        subject: "Welcome to MyApp",
+        react: WelcomeEmail({ name: event.data.name, loginUrl: "https://myapp.com/login" }),
+      });
+    });
+  },
+);
+```
+
 ### Email preview server
 ```bash
-# package.json script
+# Install React Email CLI
+npm i -D react-email
+
+# Add script to package.json
 "email:dev": "email dev --dir emails --port 3001"
+
+# Run preview — opens browser at localhost:3001 with live reload
+npm run email:dev
 ```
+Preview renders each file in `emails/` as a navigable route. Props use the
+component's default values or an exported `PreviewProps` object.
 
 ## Anti-pattern
 

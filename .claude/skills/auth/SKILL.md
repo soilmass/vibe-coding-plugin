@@ -179,3 +179,4 @@ export default function LoginPage() {
 - `payments` — billing requires authenticated users
 - `logging` — log authentication attempts and failures
 - `shadcn` — Card, Button for login UI composition
+- `compliance` — user identity required for GDPR audit trails

@@ -180,6 +180,205 @@ backoff for polling.
 - [ ] WebSocket via hosted service (Pusher/Ably) not raw `ws`
 - [ ] Polling uses reasonable interval with backoff
 
+### Premium Real-Time UI Patterns
+
+#### Animated progress stream
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { CheckCircle, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+type Step = { label: string; status: "pending" | "active" | "done" };
+
+export function StreamProgress({ taskId }: { taskId: string }) {
+  const [steps, setSteps] = useState<Step[]>([]);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const source = new EventSource(`/api/events?taskId=${taskId}`);
+    source.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === "progress") setProgress(data.value);
+      if (data.type === "steps") setSteps(data.steps);
+      if (data.type === "complete") source.close();
+    };
+    return () => source.close();
+  }, [taskId]);
+
+  return (
+    <div className="space-y-4">
+      {/* Animated progress bar */}
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70"
+          animate={{ width: `${progress}%` }}
+          transition={{ type: "spring", stiffness: 100, damping: 20 }}
+        />
+      </div>
+
+      {/* Step list */}
+      <div className="space-y-2">
+        {steps.map((step, i) => (
+          <motion.div
+            key={step.label}
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 25 }}
+            className="flex items-center gap-3"
+          >
+            <AnimatePresence mode="wait">
+              {step.status === "done" ? (
+                <motion.div key="done" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                </motion.div>
+              ) : step.status === "active" ? (
+                <motion.div key="active" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
+                  <Loader2 className="h-5 w-5 text-primary" />
+                </motion.div>
+              ) : (
+                <div className="h-5 w-5 rounded-full border-2 border-muted" />
+              )}
+            </AnimatePresence>
+            <span className={step.status === "done" ? "text-sm text-muted-foreground line-through" : "text-sm font-medium"}>
+              {step.label}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+#### Connection status indicator
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+export function ConnectionDot({ status }: { status: "connected" | "connecting" | "disconnected" }) {
+  const colors = {
+    connected: "bg-green-500",
+    connecting: "bg-amber-500",
+    disconnected: "bg-red-500",
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="relative flex h-2.5 w-2.5">
+        {status === "connected" && (
+          <motion.span
+            className="absolute inline-flex h-full w-full rounded-full bg-green-400"
+            animate={{ scale: [1, 1.5, 1], opacity: [0.75, 0, 0.75] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          />
+        )}
+        {status === "connecting" && (
+          <motion.span
+            className="absolute inline-flex h-full w-full rounded-full bg-amber-400"
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ repeat: Infinity, duration: 1 }}
+          />
+        )}
+        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${colors[status]}`} />
+      </span>
+      <span className="text-xs text-muted-foreground capitalize">{status}</span>
+    </div>
+  );
+}
+```
+
+#### Live data pulse effect
+```tsx
+"use client";
+import { motion, useMotionValue, useTransform, animate } from "motion/react";
+import { useEffect } from "react";
+
+export function LiveCounter({ value, label }: { value: number; label: string }) {
+  const motionValue = useMotionValue(0);
+  const rounded = useTransform(motionValue, (v) => Math.round(v).toLocaleString());
+
+  useEffect(() => {
+    animate(motionValue, value, { type: "spring", stiffness: 100, damping: 20 });
+  }, [value, motionValue]);
+
+  return (
+    <div className="relative flex flex-col items-center">
+      {/* Pulse ring on update */}
+      <motion.div
+        key={value}
+        initial={{ scale: 0.8, opacity: 0.6 }}
+        animate={{ scale: 1.6, opacity: 0 }}
+        transition={{ duration: 0.6 }}
+        className="absolute inset-0 rounded-xl border-2 border-primary"
+      />
+      <motion.span className="text-3xl font-bold tabular-nums">{rounded}</motion.span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+```
+
+#### Reconnection toast with backoff
+```tsx
+"use client";
+import { toast } from "sonner";
+
+export function handleReconnection(attempt: number, maxAttempts = 5) {
+  const delay = Math.min(1000 * 2 ** attempt, 30000); // Exponential backoff, max 30s
+
+  if (attempt >= maxAttempts) {
+    toast.error("Connection lost", {
+      description: "Unable to reconnect. Please refresh the page.",
+      duration: Infinity,
+      action: { label: "Refresh", onClick: () => window.location.reload() },
+    });
+    return;
+  }
+
+  toast.loading(`Reconnecting in ${delay / 1000}s...`, {
+    id: "reconnect",
+    duration: delay,
+  });
+}
+```
+
+#### Streaming text with typewriter
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+
+export function StreamingText({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState("");
+
+  useEffect(() => {
+    setDisplayed("");
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < text.length) {
+        setDisplayed(text.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 20);
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return (
+    <p className="text-sm">
+      {displayed}
+      <motion.span
+        animate={{ opacity: [1, 0] }}
+        transition={{ repeat: Infinity, duration: 0.8 }}
+        className="inline-block h-4 w-0.5 bg-foreground align-middle"
+      />
+    </p>
+  );
+}
+```
+
 ## Composes With
 - `api-routes` — SSE endpoints are route handlers
 - `react-client-components` — EventSource runs in client components
@@ -187,3 +386,6 @@ backoff for polling.
 - `state-management` — real-time data updates client state
 - `logging` — log connection lifecycle events
 - `error-handling` — handle connection failures and reconnection
+- `rate-limiting` — throttle connection attempts and message rates
+- `animation` — progress streams, connection status, live data pulses
+- `notifications` — real-time notification delivery

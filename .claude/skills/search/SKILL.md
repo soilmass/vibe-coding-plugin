@@ -240,6 +240,128 @@ Default Meilisearch settings search all fields with equal weight. Always configu
 - [ ] Search analytics tracking (queries, no-results)
 - [ ] Fallback behavior when search service is unavailable
 
+### Premium Search UI Polish
+
+#### Search input with focus microinteraction
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { Search } from "lucide-react";
+import { useState } from "react";
+
+export function SearchInput({ onSearch }: { onSearch: (q: string) => void }) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <motion.div
+      animate={{
+        boxShadow: focused
+          ? "0 0 0 2px var(--color-primary), 0 0 12px 0 oklch(0.55 0.2 270 / 0.1)"
+          : "0 0 0 1px var(--color-border)",
+      }}
+      transition={{ duration: 0.2 }}
+      className="flex items-center gap-2 rounded-xl bg-background px-3"
+    >
+      <motion.div animate={{ scale: focused ? 1.1 : 1, color: focused ? "var(--color-primary)" : "var(--color-muted-foreground)" }}>
+        <Search className="h-4 w-4" />
+      </motion.div>
+      <input
+        type="search"
+        placeholder="Search..."
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => onSearch(e.target.value)}
+        className="flex-1 bg-transparent py-2.5 text-sm outline-none"
+      />
+      <kbd className="hidden text-xs text-muted-foreground/60 sm:block">/</kbd>
+    </motion.div>
+  );
+}
+```
+
+#### Staggered search results entrance
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function SearchResults({ results, query }: {
+  results: SearchHit[];
+  query: string;
+}) {
+  return (
+    <AnimatePresence mode="popLayout">
+      {results.map((hit, i) => (
+        <motion.a
+          key={hit.id}
+          href={hit.link}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 25,
+            delay: i * 0.03,
+          }}
+          className="block rounded-lg p-3 transition-colors hover:bg-muted/50"
+        >
+          <p
+            className="text-sm font-medium"
+            dangerouslySetInnerHTML={{ __html: hit._formatted?.name ?? hit.name }}
+          />
+          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+            {hit.description}
+          </p>
+        </motion.a>
+      ))}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Animated empty search state
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { SearchX } from "lucide-react";
+
+export function SearchEmpty({ query }: { query: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center py-12 text-center"
+    >
+      <motion.div
+        animate={{ y: [0, -4, 0] }}
+        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+        className="mb-3 rounded-xl bg-muted/50 p-4"
+      >
+        <SearchX className="h-8 w-8 text-muted-foreground/40" />
+      </motion.div>
+      <p className="text-sm font-medium">No results for "{query}"</p>
+      <p className="mt-1 text-xs text-muted-foreground">Try a different search term</p>
+    </motion.div>
+  );
+}
+```
+
+#### Search loading skeleton
+```tsx
+export function SearchSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="rounded-lg p-3" style={{ opacity: 1 - i * 0.12 }}>
+          <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+          <div className="mt-2 h-3 w-full animate-pulse rounded bg-muted" />
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `prisma` — source of truth for indexable data
 - `react-server-actions` — search Server Action pattern
@@ -247,3 +369,5 @@ Default Meilisearch settings search all fields with equal weight. Always configu
 - `docker-dev` — Meilisearch in docker-compose
 - `background-jobs` — incremental indexing with Inngest
 - `analytics` — search query analytics
+- `caching` — cache search results for repeated queries
+- `animation` — input focus, result stagger, empty state animations

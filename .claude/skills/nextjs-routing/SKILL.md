@@ -170,6 +170,101 @@ Interception conventions:
 - `(..)(..)` — two levels up
 - `(...)` — from root
 
+### Route Transition & Navigation Polish
+
+#### Page transition wrapper
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { usePathname } from "next/navigation";
+
+export function PageTransition({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// Usage in layout.tsx:
+// <PageTransition>{children}</PageTransition>
+```
+
+#### Animated intercepted modal
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { useRouter } from "next/navigation";
+
+export function InterceptedModal({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={() => router.back()}
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+      />
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="fixed inset-4 z-50 mx-auto my-auto max-h-[85vh] max-w-2xl overflow-auto rounded-2xl bg-card shadow-2xl"
+      >
+        {children}
+      </motion.div>
+    </>
+  );
+}
+```
+
+#### Slim route progress bar
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+
+export function RouteProgress() {
+  const pathname = usePathname();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, [pathname]);
+
+  if (!loading) return null;
+
+  return (
+    <motion.div
+      className="fixed inset-x-0 top-0 z-[100] h-0.5 bg-primary"
+      initial={{ scaleX: 0, transformOrigin: "left" }}
+      animate={{ scaleX: 0.8 }}
+      exit={{ scaleX: 1, opacity: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    />
+  );
+}
+```
+
 ## Composes With
 - `error-handling` — error.tsx is a routing convention
 - `react-suspense` — loading.tsx creates Suspense boundaries
@@ -177,3 +272,5 @@ Interception conventions:
 - `i18n` — locale-aware routing with `[locale]` segments
 - `state-management` — URL state syncs with route params via nuqs
 - `layout-patterns` — parallel routes for split views
+- `animation` — page transitions, modal entrance/exit, progress bar
+- `loading-transitions` — route transition overlays

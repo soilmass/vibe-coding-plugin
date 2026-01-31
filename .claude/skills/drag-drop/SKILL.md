@@ -264,8 +264,189 @@ function handleDragOver(event: DragOverEvent) {
 - [ ] Server Action to persist new order
 - [ ] Optimistic reorder before server confirmation
 
+## Microinteractions & Visual Polish
+
+Default drag-drop feels mechanical. Premium drag-drop has spring physics, shadow depth during drag, smooth settle animations, and visual cues that make reordering feel physical.
+
+### Spring physics with Motion Reorder
+```tsx
+"use client";
+
+import { Reorder, AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
+import { GripVertical } from "lucide-react";
+
+type Item = { id: string; title: string };
+
+export function SpringSortableList({
+  items: initialItems,
+  onReorder,
+}: {
+  items: Item[];
+  onReorder: (items: Item[]) => Promise<void>;
+}) {
+  const [items, setItems] = useState(initialItems);
+
+  function handleReorder(newOrder: Item[]) {
+    setItems(newOrder);
+    onReorder(newOrder);
+  }
+
+  return (
+    <Reorder.Group values={items} onReorder={handleReorder} className="space-y-2">
+      <AnimatePresence initial={false}>
+        {items.map((item) => (
+          <Reorder.Item
+            key={item.id}
+            value={item}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+            whileDrag={{
+              scale: 1.03,
+              boxShadow: "0 12px 28px -4px oklch(0 0 0 / 0.15), 0 4px 8px -2px oklch(0 0 0 / 0.08)",
+              cursor: "grabbing",
+              zIndex: 50,
+            }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className="flex items-center gap-3 rounded-lg border bg-card p-3"
+          >
+            <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span>{item.title}</span>
+          </Reorder.Item>
+        ))}
+      </AnimatePresence>
+    </Reorder.Group>
+  );
+}
+```
+
+### Drag ghost with rotation and depth
+```tsx
+// Enhanced DragOverlay for dnd-kit with visual depth
+<DragOverlay dropAnimation={{
+  duration: 250,
+  easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+}}>
+  {activeTask && (
+    <div
+      className="rounded-lg border bg-card p-3 shadow-2xl"
+      style={{
+        transform: "rotate(2deg) scale(1.04)",
+        opacity: 0.95,
+      }}
+    >
+      {activeTask.title}
+    </div>
+  )}
+</DragOverlay>
+```
+
+### Drop zone with pulse animation
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+import { Upload } from "lucide-react";
+import { useState, type DragEvent } from "react";
+import { cn } from "@/lib/utils";
+
+export function AnimatedDropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    onFiles(Array.from(e.dataTransfer.files));
+  }
+
+  return (
+    <motion.div
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      animate={isDragging ? { scale: 1.02, borderColor: "var(--color-primary)" } : { scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={cn(
+        "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8",
+        "transition-colors",
+        isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"
+      )}
+    >
+      <motion.div
+        animate={isDragging ? { y: [0, -6, 0] } : {}}
+        transition={{ repeat: Infinity, duration: 1 }}
+      >
+        <Upload className={cn(
+          "h-8 w-8 transition-colors",
+          isDragging ? "text-primary" : "text-muted-foreground/50"
+        )} />
+      </motion.div>
+      <p className="text-sm text-muted-foreground">
+        {isDragging ? "Drop files here" : "Drag files or click to upload"}
+      </p>
+    </motion.div>
+  );
+}
+```
+
+### Kanban column highlight on drag over
+```tsx
+"use client";
+
+import { useDroppable } from "@dnd-kit/core";
+import { cn } from "@/lib/utils";
+
+function KanbanColumn({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "w-72 rounded-xl p-3 transition-all duration-200",
+        isOver
+          ? "bg-primary/5 ring-2 ring-primary/20 ring-offset-2"
+          : "bg-muted/50"
+      )}
+    >
+      <h3 className="mb-3 font-semibold">{title}</h3>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+```
+
+### Drag handle hover feedback
+```tsx
+// Drag handle that scales on hover and changes cursor
+<button
+  {...attributes}
+  {...listeners}
+  className={cn(
+    "rounded p-1 transition-all",
+    "hover:bg-muted hover:scale-110",
+    "active:scale-95 active:bg-muted/80",
+    "cursor-grab active:cursor-grabbing"
+  )}
+  aria-label="Drag to reorder"
+>
+  <GripVertical className="h-4 w-4 text-muted-foreground" />
+</button>
+```
+
 ## Composes With
 - `react-client-components` — drag interactions require "use client"
 - `react-server-actions` — persist reorder via Server Actions
 - `accessibility` — keyboard-accessible drag with dnd-kit sensors
 - `state-management` — optimistic state management during drag
+- `animation` — Motion Reorder for spring physics, whileDrag effects
+- `cursor-effects` — custom cursor states during drag operations

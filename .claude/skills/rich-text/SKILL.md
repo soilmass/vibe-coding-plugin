@@ -281,9 +281,147 @@ export default function Page() { ... }
 - [ ] Rendered content uses `prose dark:prose-invert` for styling
 - [ ] Editor has placeholder text for empty state
 
+### Premium Editor Polish
+
+#### Floating toolbar with glassmorphism
+```tsx
+"use client";
+import { BubbleMenu, type Editor } from "@tiptap/react";
+
+export function FloatingToolbar({ editor }: { editor: Editor }) {
+  return (
+    <BubbleMenu
+      editor={editor}
+      tippyOptions={{ duration: 150 }}
+      className={cn(
+        "flex items-center gap-0.5 rounded-xl border px-1 py-0.5",
+        "bg-background/80 backdrop-blur-xl shadow-lg",
+        "dark:bg-card/80 dark:border-white/10",
+        "dark:[box-shadow:0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]",
+        "animate-in fade-in-0 zoom-in-95 duration-150"
+      )}
+    >
+      <Toggle
+        size="sm"
+        pressed={editor.isActive("bold")}
+        onPressedChange={() => editor.chain().focus().toggleBold().run()}
+        className="h-8 w-8 rounded-lg"
+        aria-label="Bold"
+      >
+        <Bold className="h-3.5 w-3.5" />
+      </Toggle>
+      {/* ... more toolbar buttons */}
+    </BubbleMenu>
+  );
+}
+```
+
+#### Animated placeholder with fade
+```css
+/* Tiptap placeholder animation */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-muted-foreground);
+  pointer-events: none;
+  height: 0;
+  opacity: 0.5;
+  animation: placeholder-fade-in 300ms ease forwards;
+}
+
+@keyframes placeholder-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 0.5; transform: translateY(0); }
+}
+```
+
+#### Editor focus ring animation
+```tsx
+// Editor container with animated focus state
+<div
+  className={cn(
+    "rounded-xl border transition-all duration-200",
+    "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50",
+    "focus-within:shadow-[0_0_0_4px_oklch(0.55_0.2_270/0.08)]"
+  )}
+>
+  <EditorToolbar editor={editor} />
+  <EditorContent
+    editor={editor}
+    className="prose dark:prose-invert max-w-none p-4 focus:outline-none"
+  />
+</div>
+```
+
+#### Save status with animated indicator
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { Check, Loader2, Cloud } from "lucide-react";
+
+type SaveStatus = "idle" | "saving" | "saved";
+
+export function SaveIndicator({ status }: { status: SaveStatus }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <AnimatePresence mode="wait">
+        {status === "saving" && (
+          <motion.div key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Loader2 className="h-3 w-3 animate-spin" />
+          </motion.div>
+        )}
+        {status === "saved" && (
+          <motion.div
+            key="saved"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 25 }}
+          >
+            <Check className="h-3 w-3 text-green-500" />
+          </motion.div>
+        )}
+        {status === "idle" && (
+          <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 0.5 }}>
+            <Cloud className="h-3 w-3" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <span>{status === "saving" ? "Saving..." : status === "saved" ? "Saved" : "Draft"}</span>
+    </div>
+  );
+}
+```
+
+#### Empty state with illustration
+```tsx
+// When editor has no content and is not focused
+export function EditorEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-3 rounded-xl bg-muted/50 p-4"
+      >
+        <FileText className="h-8 w-8 text-muted-foreground/50" />
+      </motion.div>
+      <p className="text-sm text-muted-foreground">Start writing something amazing...</p>
+      <p className="mt-1 text-xs text-muted-foreground/60">Use / for commands, ** for bold</p>
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `react-client-components` — editor requires "use client"
 - `react-server-actions` — content persistence via Server Actions
 - `file-uploads` — image upload within editor
 - `shadcn` — Toggle, ToggleGroup for toolbar
 - `security` — DOMPurify for XSS prevention
+- `cms` — rich text content from headless CMS rendering
+- `accessibility` — editor keyboard navigation and ARIA labels
+- `animation` — toolbar transitions, save status animations
+- `visual-design` — glassmorphism toolbar, focus ring styling
+- `dark-mode` — editor chrome adapts to theme

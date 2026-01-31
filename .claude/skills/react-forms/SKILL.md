@@ -286,9 +286,283 @@ useEffect(() => {
 </label>
 ```
 
+## Microinteractions & Visual Polish
+
+Functional forms are table stakes. Award-winning forms feel alive — errors animate in, inputs respond to focus, and success states celebrate.
+
+### Animated error messages
+```tsx
+"use client";
+
+import { motion, AnimatePresence } from "motion/react";
+
+function FieldError({ message }: { message?: string }) {
+  return (
+    <AnimatePresence mode="wait">
+      {message && (
+        <motion.p
+          initial={{ opacity: 0, y: -8, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: -8, height: 0 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className="text-sm text-destructive"
+          role="alert"
+        >
+          {message}
+        </motion.p>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+### Input focus ring animation
+```tsx
+"use client";
+
+import { cn } from "@/lib/utils";
+
+function AnimatedInput({
+  ref,
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }) {
+  return (
+    <input
+      ref={ref}
+      className={cn(
+        "rounded-lg border bg-transparent px-4 py-2.5 text-sm",
+        "ring-offset-background transition-all duration-200",
+        "focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2",
+        "focus:border-primary focus:shadow-[0_0_0_3px_oklch(0.55_0.15_270/0.08)]",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+```
+
+### Shake on invalid submission
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+import { useActionState } from "react";
+
+export function ShakeForm({ action }: { action: (prev: FormState, fd: FormData) => Promise<FormState> }) {
+  const [state, formAction, isPending] = useActionState(action, {});
+  const hasError = state.error && Object.keys(state.error).length > 0;
+
+  return (
+    <motion.form
+      action={formAction}
+      animate={hasError ? { x: [0, -8, 8, -4, 4, 0] } : {}}
+      transition={{ duration: 0.4 }}
+    >
+      {/* fields */}
+    </motion.form>
+  );
+}
+```
+
+### Submit button with loading spinner
+```tsx
+"use client";
+
+import { useFormStatus } from "react-dom";
+import { motion, AnimatePresence } from "motion/react";
+import { Loader2, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+function SubmitButton({ label = "Submit", success }: { label?: string; success?: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" disabled={pending} className="relative min-w-[120px]">
+      <AnimatePresence mode="wait">
+        {success ? (
+          <motion.span
+            key="success"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="flex items-center gap-2 text-green-50"
+          >
+            <Check className="h-4 w-4" /> Done
+          </motion.span>
+        ) : pending ? (
+          <motion.span
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" /> Saving…
+          </motion.span>
+        ) : (
+          <motion.span
+            key="idle"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </Button>
+  );
+}
+```
+
+### Optimistic item with enter/exit animation
+```tsx
+"use client";
+
+import { motion, AnimatePresence } from "motion/react";
+import { useOptimistic } from "react";
+
+export function AnimatedTodoList({
+  todos,
+  addTodo,
+}: {
+  todos: Todo[];
+  addTodo: (formData: FormData) => Promise<void>;
+}) {
+  const [optimisticTodos, addOptimistic] = useOptimistic(
+    todos,
+    (state, newTitle: string) => [
+      ...state,
+      { id: `temp-${Date.now()}`, title: newTitle, completed: false },
+    ]
+  );
+
+  return (
+    <ul className="space-y-2">
+      <AnimatePresence initial={false}>
+        {optimisticTodos.map((todo) => (
+          <motion.li
+            key={todo.id}
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, x: -20 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className={cn(
+              "rounded-lg border p-3",
+              todo.id.startsWith("temp") && "opacity-60"
+            )}
+          >
+            {todo.title}
+          </motion.li>
+        ))}
+      </AnimatePresence>
+    </ul>
+  );
+}
+```
+
+### Floating label input
+```tsx
+"use client";
+
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+function FloatingInput({
+  label,
+  name,
+  type = "text",
+  ...props
+}: {
+  label: string;
+  name: string;
+  type?: string;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
+  const [focused, setFocused] = useState(false);
+  const [hasValue, setHasValue] = useState(false);
+  const isActive = focused || hasValue;
+
+  return (
+    <div className="relative">
+      <input
+        name={name}
+        type={type}
+        className={cn(
+          "peer w-full rounded-lg border bg-transparent px-4 pb-2 pt-5 text-sm",
+          "transition-all duration-200",
+          "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+        )}
+        onFocus={() => setFocused(true)}
+        onBlur={(e) => {
+          setFocused(false);
+          setHasValue(e.target.value.length > 0);
+        }}
+        placeholder=" "
+        {...props}
+      />
+      <label
+        className={cn(
+          "pointer-events-none absolute left-4 text-muted-foreground",
+          "transition-all duration-200 ease-out",
+          isActive
+            ? "top-1.5 text-xs text-primary"
+            : "top-3.5 text-sm"
+        )}
+      >
+        {label}
+      </label>
+    </div>
+  );
+}
+```
+
+### Success celebration
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+
+function SuccessState({ message }: { message: string }) {
+  return (
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="flex flex-col items-center gap-3 py-8"
+    >
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 10, delay: 0.1 }}
+        className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+      >
+        <motion.svg
+          viewBox="0 0 24 24"
+          className="h-8 w-8 text-green-600 dark:text-green-400"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <motion.path
+            d="M5 13l4 4L19 7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </motion.svg>
+      </motion.div>
+      <p className="text-lg font-medium">{message}</p>
+    </motion.div>
+  );
+}
+```
+
 ## Composes With
 - `react-server-actions` — forms submit to server actions
 - `shadcn` — shadcn Form component provides structure
 - `error-handling` — form errors shown inline, not in error boundaries
 - `logging` — track form submissions and validation failures
 - `accessibility` — form inputs need proper ARIA, labels, and error announcements
+- `advanced-form-ux` — multi-step wizards, auto-save, conditional fields extend basic forms
+- `animation` — Motion library for error, enter/exit, and success animations
+- `loading-transitions` — skeleton states and transition overlays during submission

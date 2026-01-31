@@ -160,9 +160,184 @@ export function Modal({ open, onClose, children }: {
 // focus:    text-foreground ring-2 ring-ring
 ```
 
+### Premium Accessible Animations
+
+#### Animated focus ring with spring physics
+```tsx
+/* Focus ring that expands with a spring feel — CSS only */
+.focus-ring {
+  @apply outline-none transition-all duration-200;
+}
+.focus-ring:focus-visible {
+  @apply ring-2 ring-primary ring-offset-2 ring-offset-background;
+  /* Animated expansion via box-shadow transition */
+  box-shadow:
+    0 0 0 2px var(--color-background),
+    0 0 0 4px var(--color-primary),
+    0 0 12px 0 oklch(0.55 0.2 270 / 0.15);
+  transition: box-shadow 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+```
+
+```tsx
+// Reusable focusRing utility class
+import { cn } from "@/lib/utils";
+
+export function focusRing(className?: string) {
+  return cn(
+    "outline-none",
+    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+    "focus-visible:[box-shadow:0_0_0_2px_var(--color-background),0_0_0_4px_var(--color-primary),0_0_12px_0_oklch(0.55_0.2_270/0.15)]",
+    "transition-[box-shadow] duration-200",
+    className
+  );
+}
+
+// Usage
+<button className={focusRing("rounded-lg px-4 py-2")}>Click me</button>
+```
+
+#### prefers-reduced-motion as universal animation gate
+```tsx
+"use client";
+import { useReducedMotion } from "motion/react";
+
+// Hook that provides safe animation values
+export function useAccessibleMotion() {
+  const prefersReduced = useReducedMotion();
+
+  return {
+    // Fade only (no movement) for reduced motion
+    enter: prefersReduced
+      ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.15 } }
+      : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { type: "spring", stiffness: 300, damping: 25 } },
+
+    // Instant for reduced motion
+    spring: prefersReduced
+      ? { type: "tween" as const, duration: 0.01 }
+      : { type: "spring" as const, stiffness: 300, damping: 25 },
+
+    // No layout animations for reduced motion
+    layout: !prefersReduced,
+  };
+}
+```
+
+```css
+/* CSS fallback for non-React contexts */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+#### Animated aria-live region for status updates
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+// Announces to screen readers AND animates visually
+export function LiveStatus({ message, type = "polite" }: {
+  message: string | null;
+  type?: "polite" | "assertive";
+}) {
+  return (
+    <div aria-live={type} aria-atomic="true" className="relative">
+      <AnimatePresence mode="wait">
+        {message && (
+          <motion.p
+            key={message}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="text-sm text-muted-foreground"
+          >
+            {message}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+```
+
+#### Touch feedback with visual ripple
+```tsx
+"use client";
+import { useState, useCallback } from "react";
+
+// Accessible ripple — visible feedback for both mouse and keyboard
+export function RippleButton({ children, onClick, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const [ripples, setRipples] = useState<{ x: number; y: number; id: number }[]>([]);
+
+  const handleInteraction = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
+    if ("key" in e && e.key !== "Enter" && e.key !== " ") return;
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = "clientX" in e ? e.clientX - rect.left : rect.width / 2;
+    const y = "clientY" in e ? e.clientY - rect.top : rect.height / 2;
+    const id = Date.now();
+
+    setRipples((r) => [...r, { x, y, id }]);
+    setTimeout(() => setRipples((r) => r.filter((ri) => ri.id !== id)), 600);
+  }, []);
+
+  return (
+    <button
+      onClick={(e) => { handleInteraction(e); onClick?.(e); }}
+      onKeyDown={handleInteraction}
+      className="relative overflow-hidden rounded-lg bg-primary px-4 py-2 text-primary-foreground"
+      {...props}
+    >
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="absolute rounded-full bg-white/25 animate-[ripple_600ms_ease-out]"
+          style={{ left: r.x - 10, top: r.y - 10, width: 20, height: 20 }}
+        />
+      ))}
+      {children}
+    </button>
+  );
+}
+```
+
+```css
+@keyframes ripple {
+  to { transform: scale(8); opacity: 0; }
+}
+```
+
+#### Focus-within glow for input groups
+```tsx
+// Compound input with grouped focus indication
+<div className={cn(
+  "flex items-center rounded-lg border bg-background px-3",
+  "transition-all duration-200",
+  "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50",
+  "focus-within:shadow-[0_0_0_4px_oklch(0.55_0.2_270/0.08)]"
+)}>
+  <SearchIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+  <input
+    type="search"
+    placeholder="Search..."
+    className="flex-1 bg-transparent py-2 px-2 outline-none text-sm"
+    aria-label="Search"
+  />
+  <kbd className="text-xs text-muted-foreground">/</kbd>
+</div>
+```
+
 ## Composes With
 - `react-client-components` — a11y attributes on interactive client components
 - `shadcn` — shadcn/ui components are accessible by default
 - `react-forms` — form error announcements and validation
 - `storybook` — per-component a11y auditing
-- `animation` — respect prefers-reduced-motion
+- `animation` — respect prefers-reduced-motion, accessible motion hook
+- `visual-design` — focus ring styling, contrast progression
+- `responsive-design` — touch target sizing on mobile

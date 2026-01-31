@@ -144,7 +144,129 @@ Generate sitemaps dynamically from your database. Build JSON-LD from typed objec
 - [ ] `metadataBase` set in root layout
 - [ ] Canonical URLs set for duplicate content prevention
 
+### Premium OpenGraph Image Design
+
+#### OG image with brand design system
+```tsx
+// app/blog/[slug]/opengraph-image.tsx
+import { ImageResponse } from "next/og";
+
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          width: "100%",
+          height: "100%",
+          padding: "60px",
+          // Dark background with subtle gradient
+          background: "linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)",
+          color: "#fafafa",
+          fontFamily: "system-ui, sans-serif",
+        }}
+      >
+        {/* Top — category tag */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <div
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              backgroundColor: "#6366f1",
+            }}
+          />
+          <span style={{ fontSize: "18px", color: "#a1a1aa", textTransform: "uppercase", letterSpacing: "2px" }}>
+            {post.category}
+          </span>
+        </div>
+
+        {/* Center — title with size hierarchy */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <h1
+            style={{
+              fontSize: post.title.length > 60 ? "42px" : "56px",
+              fontWeight: 700,
+              lineHeight: 1.15,
+              letterSpacing: "-0.02em",
+              maxWidth: "80%",
+            }}
+          >
+            {post.title}
+          </h1>
+          {post.excerpt && (
+            <p style={{ fontSize: "20px", color: "#a1a1aa", maxWidth: "70%", lineHeight: 1.5 }}>
+              {post.excerpt.slice(0, 120)}
+            </p>
+          )}
+        </div>
+
+        {/* Bottom — author + branding */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {post.author.avatar && (
+              <img
+                src={post.author.avatar}
+                width={40}
+                height={40}
+                style={{ borderRadius: "50%" }}
+              />
+            )}
+            <span style={{ fontSize: "16px", color: "#d4d4d8" }}>{post.author.name}</span>
+          </div>
+          <span style={{ fontSize: "16px", color: "#71717a" }}>myapp.com</span>
+        </div>
+
+        {/* Decorative gradient blob */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-100px",
+            right: "-100px",
+            width: "400px",
+            height: "400px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, oklch(0.5 0.2 270 / 0.15), transparent 70%)",
+          }}
+        />
+      </div>
+    ),
+    { ...size }
+  );
+}
+```
+
+#### OG image design rules
+```
+1. Dark backgrounds (10-15% lightness) — more share-friendly than white
+2. Title font-size: 42-56px depending on length (auto-scale)
+3. Max 2 font weights: bold for title, regular for meta
+4. Brand color as accent (dot, line, gradient) — not background
+5. Author avatar adds social proof
+6. Consistent padding: 60px on all sides
+7. Decorative gradient blobs for depth (subtle, 10-15% opacity)
+8. Always include domain name for attribution
+9. Category label uppercase with letter-spacing for hierarchy
+10. Limit text to title + 1 line excerpt — OG images are thumbnails
+```
+
 ## Composes With
 - `nextjs-metadata` — basic metadata complements advanced SEO
 - `nextjs-routing` — sitemap reflects all public routes
 - `i18n` — hreflang tags and locale-specific sitemaps
+- `visual-design` — OG image color palette and typography hierarchy
+- `advanced-typography` — font sizing and weight hierarchy in OG images

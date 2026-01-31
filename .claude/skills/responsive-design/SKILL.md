@@ -263,9 +263,128 @@ const isMobile = window.innerWidth < 768; // SSR crash, no reactivity
 </div>
 ```
 
+### Microinteractions & Responsive Motion
+
+#### Animated layout transitions on breakpoint changes
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Cards animate to new positions when grid columns change
+export function ResponsiveCardGrid({ items }: { items: Item[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((item) => (
+        <motion.div
+          key={item.id}
+          layout // Animate position changes when grid reflows
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="rounded-xl border bg-card p-6"
+        >
+          {item.title}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+```
+
+#### Touch feedback — scale on press for mobile
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Visual "press" feedback replaces hover on touch devices
+export function TouchCard({ children, onClick }: {
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: 1.02 }} // Desktop only (CSS gates hover)
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="w-full rounded-xl border bg-card p-6 text-left"
+    >
+      {children}
+    </motion.button>
+  );
+}
+```
+
+#### Responsive animation timing — reduce on mobile
+```tsx
+"use client";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+// Slower, simpler animations on mobile for performance
+export function useResponsiveMotion() {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const prefersReduced = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+  if (prefersReduced) return { duration: 0, stiffness: 999, damping: 99 };
+  if (isMobile) return { duration: 0.2, stiffness: 400, damping: 30 };
+  return { duration: 0.4, stiffness: 300, damping: 25 };
+}
+```
+
+#### Responsive modular spacing scale
+```css
+/* app/globals.css — spacing scales up with viewport */
+@theme {
+  /* Base unit grows: 4px mobile → 6px desktop */
+  --spacing-section: clamp(3rem, 2rem + 4vw, 6rem);
+  --spacing-card: clamp(1rem, 0.75rem + 1vw, 1.5rem);
+  --spacing-stack: clamp(0.75rem, 0.5rem + 0.75vw, 1.25rem);
+}
+```
+
+```tsx
+// Sections breathe more on larger screens
+<section className="py-[length:var(--spacing-section)]">
+  <div className="space-y-[length:var(--spacing-stack)]">
+    {children}
+  </div>
+</section>
+```
+
+#### Scroll-to-top with responsive placement
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+export function ScrollToTopResponsive({ visible }: { visible: boolean }) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 20 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className={cn(
+            "fixed z-50 rounded-full bg-primary p-3 text-primary-foreground shadow-lg",
+            // Mobile: center bottom, Desktop: bottom-right
+            "bottom-6 left-1/2 -translate-x-1/2 sm:left-auto sm:right-6 sm:translate-x-0"
+          )}
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
 ## Composes With
 - `tailwind-v4` — breakpoint utilities, container queries, responsive classes
 - `accessibility` — touch target sizing, focus indicators
 - `performance` — responsive images, conditional loading
 - `image-optimization` — responsive image `sizes` attribute
 - `layout-patterns` — responsive sidebar, mobile navigation
+- `visual-design` — spacing rhythm and hierarchy adapt across breakpoints
+- `animation` — responsive motion timing, layout animations on reflow
+- `advanced-typography` — fluid type scale with clamp()

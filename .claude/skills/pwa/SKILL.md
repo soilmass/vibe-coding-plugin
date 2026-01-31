@@ -220,8 +220,132 @@ Only enable in production builds.
 - [ ] Background sync for POST requests
 - [ ] Precaching for critical routes
 
+### Premium PWA UI Patterns
+
+#### Animated connectivity indicator
+```tsx
+"use client";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { WifiOff, Wifi } from "lucide-react";
+
+export function ConnectivityBanner() {
+  const [online, setOnline] = useState(true);
+  const [showReconnected, setShowReconnected] = useState(false);
+
+  useEffect(() => {
+    const goOffline = () => setOnline(false);
+    const goOnline = () => {
+      setOnline(true);
+      setShowReconnected(true);
+      setTimeout(() => setShowReconnected(false), 3000);
+    };
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {!online && (
+        <motion.div
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -40, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-amber-500 py-2 text-sm font-medium text-white"
+        >
+          <WifiOff className="h-4 w-4" />
+          You're offline — changes will sync when reconnected
+        </motion.div>
+      )}
+      {showReconnected && (
+        <motion.div
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -40, opacity: 0 }}
+          className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-green-500 py-2 text-sm font-medium text-white"
+        >
+          <Wifi className="h-4 w-4" />
+          Back online — syncing...
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Animated install prompt banner
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { Download, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export function InstallBanner({ deferredPrompt, onDismiss }: {
+  deferredPrompt: BeforeInstallPromptEvent | null;
+  onDismiss: () => void;
+}) {
+  if (!deferredPrompt) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 100, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="fixed inset-x-4 bottom-4 z-50 flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-xl sm:inset-x-auto sm:right-4 sm:max-w-sm"
+      >
+        <div className="rounded-xl bg-primary/10 p-3">
+          <Download className="h-6 w-6 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Install App</p>
+          <p className="text-xs text-muted-foreground">Get the full experience with offline access</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={async () => { await deferredPrompt.prompt(); onDismiss(); }}
+        >
+          Install
+        </Button>
+        <button onClick={onDismiss} className="p-1 text-muted-foreground hover:text-foreground">
+          <X className="h-4 w-4" />
+        </button>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+```
+
+#### SW update toast with refresh
+```tsx
+"use client";
+import { toast } from "sonner";
+
+// Call when service worker detects update
+export function promptSwUpdate(registration: ServiceWorkerRegistration) {
+  toast("Update available", {
+    description: "A new version is ready.",
+    action: {
+      label: "Refresh",
+      onClick: () => {
+        registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+        window.location.reload();
+      },
+    },
+    duration: Infinity, // Don't auto-dismiss
+  });
+}
+```
+
 ## Composes With
 - `notifications` — push notification support via service worker
 - `caching` — cache strategy alignment (HTTP cache + SW cache)
 - `deploy` — service worker versioning in CI/CD
 - `nextjs-metadata` — manifest and viewport metadata
+- `animation` — connectivity banner, install prompt transitions

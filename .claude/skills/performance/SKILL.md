@@ -346,6 +346,173 @@ const sorted = items.toSorted((a, b) => a.name.localeCompare(b.name));
 /* Touch devices skip hover entirely — no sticky hover bugs */
 ```
 
+### Perceived Performance & Visual Speed
+
+#### Skeleton-to-content crossfade
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+// Smooth transition from skeleton to real content
+export function SkeletonCrossfade({ loading, skeleton, children }: {
+  loading: boolean;
+  skeleton: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence mode="wait">
+      {loading ? (
+        <motion.div
+          key="skeleton"
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          {skeleton}
+        </motion.div>
+      ) : (
+        <motion.div
+          key="content"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Premium skeleton with gradient shimmer
+```tsx
+// Skeleton that matches content hierarchy — not just gray boxes
+export function CardSkeleton() {
+  return (
+    <div className="rounded-xl border bg-card p-6">
+      <div className="relative overflow-hidden">
+        {/* Title */}
+        <div className="mb-4 h-6 w-2/3 rounded-md bg-muted" />
+        {/* Description lines */}
+        <div className="mb-2 h-4 w-full rounded bg-muted" />
+        <div className="mb-2 h-4 w-5/6 rounded bg-muted" />
+        <div className="h-4 w-3/4 rounded bg-muted" />
+        {/* Shimmer overlay */}
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      </div>
+    </div>
+  );
+}
+```
+
+```css
+/* globals.css */
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+```
+
+#### Optimistic button — instant visual feedback
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Button changes state BEFORE server responds
+export function OptimisticButton({ onClick, children }: {
+  onClick: () => Promise<void>;
+  children: React.ReactNode;
+}) {
+  const [state, setState] = useState<"idle" | "loading" | "done">("idle");
+
+  async function handleClick() {
+    setState("loading");
+    try {
+      await onClick();
+      setState("done");
+      setTimeout(() => setState("idle"), 1500);
+    } catch {
+      setState("idle");
+    }
+  }
+
+  return (
+    <motion.button
+      onClick={handleClick}
+      whileTap={{ scale: 0.97 }}
+      className="relative overflow-hidden rounded-lg bg-primary px-4 py-2 text-primary-foreground"
+    >
+      <AnimatePresence mode="wait">
+        {state === "idle" && (
+          <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {children}
+          </motion.span>
+        )}
+        {state === "loading" && (
+          <motion.span key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </motion.span>
+        )}
+        {state === "done" && (
+          <motion.span key="done" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}>
+            <Check className="h-4 w-4" />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+}
+```
+
+#### Progressive content reveal
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Content sections fade in as they stream from server
+export function ProgressiveReveal({ children, index }: {
+  children: React.ReactNode; index: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.3,
+        delay: index * 0.05,
+        ease: [0.25, 0.46, 0.45, 0.94], // ease-out-quad
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+```
+
+#### Preload on hover for perceived instant navigation
+```tsx
+"use client";
+import { useRouter } from "next/navigation";
+import { useCallback } from "react";
+
+// Prefetch route AND preload data on hover intent
+export function SmartLink({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
+  const router = useRouter();
+  const handleHover = useCallback(() => router.prefetch(href), [href, router]);
+
+  return (
+    <a
+      href={href}
+      onMouseEnter={handleHover}
+      onFocus={handleHover}
+      onClick={(e) => { e.preventDefault(); router.push(href); }}
+      {...props}
+    >
+      {children}
+    </a>
+  );
+}
+```
+
 ## Composes With
 - `react-suspense` — Suspense boundaries for streaming
 - `caching` — cache strategies affect load times
@@ -353,3 +520,7 @@ const sorted = items.toSorted((a, b) => a.name.localeCompare(b.name));
 - `logging` — performance metrics logging
 - `animation` — animation performance with GPU-accelerated properties
 - `react-client-components` — re-render optimization affects client performance
+- `image-optimization` — images are the biggest LCP factor
+- `virtualization` — virtualized lists reduce DOM size for large datasets
+- `loading-transitions` — route transitions mask navigation latency
+- `visual-design` — skeleton design matching content visual hierarchy

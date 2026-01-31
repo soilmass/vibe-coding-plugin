@@ -1,7 +1,7 @@
 ---
 name: flow
 description: >
-  Workflow pipeline orchestrator — chains skills in predefined sequences for 32 pipelines including build, feature, harden, ship, audit, refactor, i18n, a11y, migration, seo, full-audit, observe, full-feature, resilience, gdpr, api-first, b2b-saas, content-site, search-notify, mobile-first, design-system, perf-audit, bundle-optimize, docs-sprint, ui-polish, landing-polish, and interactive-feature workflows
+  Workflow pipeline orchestrator — chains skills in predefined sequences for 33 pipelines including build, feature, harden, ship, audit, refactor, i18n, a11y, migration, seo, full-audit, observe, full-feature, security-full, db-health, deps-check, type-check, test-gaps, resilience, gdpr, api-first, b2b-saas, content-site, search-notify, mobile-first, design-system, perf-audit, bundle-optimize, docs-sprint, ui-polish, landing-polish, interactive-feature, and ui-premium workflows
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -71,9 +71,10 @@ development workflows end-to-end. The ONE orchestrator for structured multi-skil
 | `perf-audit` | `perf-profiler` → `bundle-auditor` → `performance` | Performance and bundle audit with optimization |
 | `bundle-optimize` | `bundle-auditor` → `react-server-components` → `react-client-components` → `performance` | Client/server boundary optimization |
 | `docs-sprint` | `api-documentation` → `storybook` → `testing` | API docs, component docs, and test generation |
-| `ui-polish` | `visual-design` → `composition-patterns` → `dark-mode` → `animation` → `responsive-design` → `layout-patterns` → `accessibility` | Visual polish pass for functionally complete apps |
-| `landing-polish` | `landing-patterns` → `visual-design` → `animation` → `seo-advanced` → `image-optimization` → `performance` | Marketing site with visual polish and SEO |
+| `ui-polish` | `visual-design` → `cursor-effects` → `composition-patterns` → `dark-mode` → `animation` → `responsive-design` → `layout-patterns` → `accessibility` | Visual polish pass for functionally complete apps |
+| `landing-polish` | `landing-patterns` → `visual-design` → `creative-scrolling` → `advanced-typography` → `animation` → `seo-advanced` → `image-optimization` → `performance` | Marketing site with visual polish and SEO |
 | `interactive-feature` | `nextjs-routing` → `react-server-components` → `react-forms` → `advanced-form-ux` → `react-server-actions` → `animation` → `testing` | Extended feature pipeline with rich interactivity |
+| `ui-premium` | `visual-design` → `cursor-effects` → `creative-scrolling` → `advanced-typography` → `svg-canvas` → `webgl-3d` → `loading-transitions` → `sound-design` → `animation` → `dark-mode` | Awwwards-level premium UI with all creative skills |
 
 ## Execution Rules
 
@@ -372,15 +373,17 @@ Note: Mixed pipeline — agent and skills.
 Visual polish pass for functionally complete apps.
 1. visual-design — establish color system, elevation, spacing rhythm, visual hierarchy
    Skip if: @theme has brand color scale
-2. composition-patterns — refactor boolean-prop components into compound/variant patterns
+2. cursor-effects — custom cursor, magnetic buttons, blend mode cursor
+   Skip if: mobile-only app or no creative requirement
+3. composition-patterns — refactor boolean-prop components into compound/variant patterns
    Skip if: no components with 3+ boolean mode props
-3. dark-mode — set up theme switching with next-themes
+4. dark-mode — set up theme switching with next-themes
    Skip if: ThemeProvider already configured
-4. animation — add page transitions, microinteractions
-5. responsive-design — mobile-first audit, container queries, touch targets
-6. layout-patterns — dashboard shell, sidebar, breadcrumbs
+5. animation — add page transitions, microinteractions
+6. responsive-design — mobile-first audit, container queries, touch targets
+7. layout-patterns — dashboard shell, sidebar, breadcrumbs
    Skip if: layout already implemented
-7. accessibility — final a11y audit on polished UI
+8. accessibility — final a11y audit on polished UI
 ```
 
 ### landing-polish
@@ -389,10 +392,14 @@ Marketing site with visual polish and SEO.
 1. landing-patterns — hero sections, bento grid, pricing, CTA
 2. visual-design — color system, elevation, gradients, glassmorphism
    Skip if: @theme has brand color scale
-3. animation — scroll reveals, stagger entry, hover effects
-4. seo-advanced — JSON-LD, sitemap, OpenGraph images
-5. image-optimization — responsive images, blur placeholders
-6. performance — Core Web Vitals, bundle analysis
+3. creative-scrolling — Lenis smooth scroll, scroll-triggered reveals, parallax
+   Skip if: simple single-page landing
+4. advanced-typography — fluid type scale, variable fonts, kinetic headings
+   Skip if: no custom typography requirements
+5. animation — scroll reveals, stagger entry, hover effects
+6. seo-advanced — JSON-LD, sitemap, OpenGraph images
+7. image-optimization — responsive images, blur placeholders
+8. performance — Core Web Vitals, bundle analysis
 ```
 
 ### interactive-feature
@@ -406,6 +413,27 @@ Extended feature pipeline with rich interactivity.
 5. react-server-actions — implement mutation logic
 6. animation — add transitions and feedback animations
 7. testing — unit tests for actions, E2E for flows
+```
+
+### ui-premium
+```
+Awwwards-level premium UI with all creative skills.
+1. visual-design — color system, grain texture, aurora effects, blend modes
+   Skip if: @theme has brand color scale
+2. cursor-effects — custom cursor, magnetic buttons, blend mode cursor
+   Skip if: mobile-only app
+3. creative-scrolling — Lenis smooth scroll, horizontal sections, ScrollTrigger
+4. advanced-typography — variable fonts, fluid type, kinetic text
+5. svg-canvas — SVG line drawing, morphing blobs, canvas particles
+   Skip if: no SVG/Canvas requirements
+6. webgl-3d — React Three Fiber 3D scenes, shaders, particles
+   Skip if: no 3D requirements
+7. loading-transitions — preloader, View Transitions, route transitions
+8. sound-design — interaction sounds, ambient audio, mute toggle
+   Skip if: no audio requirements
+9. animation — microinteractions, page transitions, scroll reveals
+10. dark-mode — theme switching with premium dark mode
+    Skip if: ThemeProvider already configured
 ```
 
 ## Pattern
@@ -446,4 +474,4 @@ that already exists.
 
 ## Composes With
 - `vibe` — vibe classifies intent, flow runs the pipeline
-- All 69 skills — flow chains them in sequence
+- All 76 skills — flow chains them in sequence

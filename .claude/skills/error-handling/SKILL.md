@@ -392,9 +392,175 @@ function handleDelete(id: string) {
 }
 ```
 
+### Premium Error & Empty State Animations
+
+#### Animated error page with staggered reveal
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { AlertCircle, RefreshCw, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useTransition } from "react";
+
+export default function Error({ error, reset }: {
+  error: Error & { digest?: string }; reset: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center" role="alert">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="mb-4 rounded-2xl bg-destructive/10 p-5"
+      >
+        <AlertCircle className="h-10 w-10 text-destructive" />
+      </motion.div>
+      <motion.h2
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="text-xl font-semibold"
+      >
+        Something went wrong
+      </motion.h2>
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mt-2 max-w-md text-sm text-muted-foreground"
+      >
+        {error.digest ? `Reference: ${error.digest}` : error.message}
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="mt-6 flex gap-3"
+      >
+        <Button
+          onClick={() => startTransition(() => reset())}
+          disabled={isPending}
+        >
+          <RefreshCw className={cn("mr-2 h-4 w-4", isPending && "animate-spin")} />
+          {isPending ? "Retrying..." : "Try again"}
+        </Button>
+        <Button variant="outline" asChild>
+          <a href="/"><Home className="mr-2 h-4 w-4" /> Go home</a>
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+```
+
+#### Animated 404 page
+```tsx
+import { motion } from "motion/react";
+import Link from "next/link";
+
+export default function NotFound() {
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className="text-8xl font-bold text-muted-foreground/20"
+      >
+        404
+      </motion.div>
+      <motion.p
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mt-4 text-lg text-muted-foreground"
+      >
+        This page doesn't exist or was moved
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+      >
+        <Link
+          href="/"
+          className="mt-6 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
+        >
+          Back to home
+        </Link>
+      </motion.div>
+    </div>
+  );
+}
+```
+
+#### Animated empty state with floating icon
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { Button } from "@/components/ui/button";
+
+export function AnimatedEmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 rounded-2xl bg-muted/50 p-5"
+      >
+        <motion.div
+          animate={{ y: [0, -6, 0] }}
+          transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+        >
+          <Icon className="h-10 w-10 text-muted-foreground/40" />
+        </motion.div>
+      </motion.div>
+      <motion.h3
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15 }}
+        className="text-lg font-semibold"
+      >
+        {title}
+      </motion.h3>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.25 }}
+        className="mt-2 max-w-sm text-sm text-muted-foreground"
+      >
+        {description}
+      </motion.p>
+      {action && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Button asChild className="mt-6">
+            <a href={action.href}>{action.label}</a>
+          </Button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `nextjs-routing` — error files are route segment conventions
 - `react-suspense` — Suspense boundaries handle loading, error boundaries handle failures
 - `security` — error messages should not leak sensitive details
 - `logging` — errors should be logged for debugging and monitoring
 - `shadcn` — Button, icons for error recovery UI
+- `observability` — error spans with trace context for debugging
+- `animation` — staggered reveals, floating icons, retry spin feedback
+- `visual-design` — error page visual hierarchy, icon containers

@@ -246,8 +246,140 @@ export function ProductPage() {
 
 Rule: if a piece of UI state would be useful in a shared link, put it in the URL.
 
+### State Change Visual Feedback
+
+#### Animated filter results transition
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { useQueryState } from "nuqs";
+
+// Results animate when filters change
+export function FilteredResults({ items, filterKey }: {
+  items: Item[];
+  filterKey: string; // Changes when filters update
+}) {
+  return (
+    <AnimatePresence mode="popLayout">
+      {items.map((item) => (
+        <motion.div
+          key={item.id}
+          layout
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        >
+          <ItemCard item={item} />
+        </motion.div>
+      ))}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Optimistic update with rollback animation
+```tsx
+"use client";
+import { useOptimistic, useTransition } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { toast } from "sonner";
+
+export function OptimisticTodo({ todo, toggleAction }: {
+  todo: Todo;
+  toggleAction: (id: string) => Promise<void>;
+}) {
+  const [optimistic, setOptimistic] = useOptimistic(todo);
+  const [, startTransition] = useTransition();
+
+  return (
+    <motion.div
+      layout
+      className="flex items-center gap-3 rounded-lg border p-3"
+      animate={{
+        opacity: optimistic.completed ? 0.6 : 1,
+        scale: optimistic.completed ? 0.98 : 1,
+      }}
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+    >
+      <form
+        action={() => {
+          startTransition(async () => {
+            setOptimistic({ ...todo, completed: !todo.completed });
+            try {
+              await toggleAction(todo.id);
+            } catch {
+              // Rollback happens automatically — useOptimistic resets
+              toast.error("Failed to update");
+            }
+          });
+        }}
+      >
+        <button
+          className={cn(
+            "h-5 w-5 rounded-full border-2 transition-colors",
+            optimistic.completed && "border-primary bg-primary"
+          )}
+        >
+          <AnimatePresence>
+            {optimistic.completed && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+              >
+                <Check className="h-3 w-3 text-primary-foreground" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </button>
+      </form>
+      <span className={cn(optimistic.completed && "line-through text-muted-foreground")}>
+        {todo.title}
+      </span>
+    </motion.div>
+  );
+}
+```
+
+#### Tab state with animated indicator
+```tsx
+"use client";
+import { useQueryState } from "nuqs";
+import { motion } from "motion/react";
+
+export function AnimatedTabs({ tabs }: { tabs: { value: string; label: string }[] }) {
+  const [activeTab, setActiveTab] = useQueryState("tab", { defaultValue: tabs[0].value });
+
+  return (
+    <div className="flex gap-1 border-b" role="tablist">
+      {tabs.map((tab) => (
+        <button
+          key={tab.value}
+          role="tab"
+          aria-selected={activeTab === tab.value}
+          onClick={() => setActiveTab(tab.value)}
+          className="relative px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {activeTab === tab.value && (
+            <motion.div
+              layoutId="active-tab"
+              className="absolute inset-x-0 -bottom-px h-0.5 bg-primary"
+              transition={{ type: "spring", stiffness: 500, damping: 35 }}
+            />
+          )}
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `react-server-components` — server-first data fetching replaces client stores
 - `react-forms` — form state with `useActionState`
 - `nextjs-routing` — URL state syncs with route params
 - `composition-patterns` — context patterns for shared component state
+- `animation` — filter transitions, optimistic update animations, tab indicators

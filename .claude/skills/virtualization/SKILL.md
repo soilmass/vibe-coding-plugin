@@ -330,9 +330,161 @@ const items = await db.item.findMany({
 - [ ] Scroll-to-top button for long lists
 - [ ] `overscan` set to prevent visible gaps during scrolling
 
+### Microinteractions & Visual Polish
+
+#### Staggered item entrance on initial load
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Wrap each virtual item — only animate on first render
+export function VirtualItemAnimated({ index, children, isInitialLoad }: {
+  index: number; children: React.ReactNode; isInitialLoad: boolean;
+}) {
+  if (!isInitialLoad) return <>{children}</>;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 25,
+        delay: Math.min(index * 0.03, 0.3), // Cap at 300ms
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+```
+
+#### Animated loading boundary spinner
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+// Shows at the bottom of the list during fetch
+export function InfiniteScrollLoader() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center justify-center gap-2 py-6"
+    >
+      <div className="flex gap-1">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            className="h-2 w-2 rounded-full bg-primary"
+            animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.15 }}
+          />
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground">Loading more...</span>
+    </motion.div>
+  );
+}
+```
+
+#### Scroll-to-top with smooth animation
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { ArrowUp } from "lucide-react";
+
+export function VirtualListScrollTop({ parentRef }: {
+  parentRef: React.RefObject<HTMLDivElement>;
+}) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const el = parentRef.current;
+    if (!el) return;
+    const handler = () => setShow(el.scrollTop > 400);
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
+  }, [parentRef]);
+
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          onClick={() => parentRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          className="absolute bottom-4 right-4 z-10 rounded-full bg-primary p-2.5 text-primary-foreground shadow-lg"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+#### Animated empty state for virtualized lists
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { Inbox } from "lucide-react";
+
+export function VirtualListEmpty() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
+        <div className="mb-4 rounded-2xl bg-muted/50 p-5">
+          <motion.div
+            animate={{ y: [0, -4, 0] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+          >
+            <Inbox className="h-10 w-10 text-muted-foreground/40" />
+          </motion.div>
+        </div>
+      </motion.div>
+      <p className="text-sm font-medium text-muted-foreground">No items yet</p>
+      <p className="mt-1 text-xs text-muted-foreground/60">Items will appear here once added</p>
+    </div>
+  );
+}
+```
+
+#### Skeleton shimmer for loading rows
+```tsx
+export function VirtualListSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-4 rounded-lg border p-4"
+          style={{ opacity: 1 - i * 0.08 }}
+        >
+          <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
 ## Composes With
 - `react-client-components` — virtualization requires "use client"
 - `data-tables` — virtualized rows for large table datasets
 - `nextjs-data` — server-side data loading for initial items
 - `performance` — virtualization is a key performance optimization
 - `react-suspense` — Suspense boundary around initial list load
+- `animation` — item entrance stagger, loading boundaries, empty states

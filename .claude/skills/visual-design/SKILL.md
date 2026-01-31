@@ -311,6 +311,350 @@ Nesting rule: outer radius > inner radius
 - Hover: increase shadow one level
 - Active/pressed: decrease shadow + `translate-y-px`
 
+### 9. Animated Grain / Noise Texture
+
+Canvas-based moving grain for film-quality texture. Use a static SVG fallback for reduced-motion or non-canvas environments.
+
+```tsx
+"use client";
+
+import { useEffect, useRef } from "react";
+
+function useReducedMotion(): boolean {
+  const mediaQuery =
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+  const ref = useRef(mediaQuery?.matches ?? false);
+
+  useEffect(() => {
+    if (!mediaQuery) return;
+    const handler = (e: MediaQueryListEvent) => {
+      ref.current = e.matches;
+    };
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [mediaQuery]);
+
+  return ref.current;
+}
+
+/** Static SVG noise — fallback for reduced-motion or no canvas */
+function StaticNoise() {
+  return (
+    <svg
+      className="fixed inset-0 z-50 pointer-events-none h-full w-full"
+      aria-hidden="true"
+    >
+      <filter id="grain-static">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.65"
+          numOctaves={3}
+          stitchTiles="stitch"
+        />
+      </filter>
+      <rect
+        width="100%"
+        height="100%"
+        filter="url(#grain-static)"
+        opacity="0.03"
+      />
+    </svg>
+  );
+}
+
+/** Canvas animated grain — 15fps for CPU efficiency */
+export function GrainOverlay({ opacity = 0.03 }: { opacity?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || prefersReducedMotion) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    let lastFrame = 0;
+    const FPS = 15;
+    const interval = 1000 / FPS;
+
+    function resize() {
+      if (!canvas) return;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function drawGrain(timestamp: number) {
+      if (timestamp - lastFrame < interval) {
+        animId = requestAnimationFrame(drawGrain);
+        return;
+      }
+      lastFrame = timestamp;
+
+      if (!canvas || !ctx) return;
+      const { width, height } = canvas;
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const value = Math.random() * 255;
+        data[i] = value;     // R
+        data[i + 1] = value; // G
+        data[i + 2] = value; // B
+        data[i + 3] = Math.random() * 255 * 0.05; // A — very subtle
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      animId = requestAnimationFrame(drawGrain);
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+    animId = requestAnimationFrame(drawGrain);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, [prefersReducedMotion]);
+
+  // Reduced motion: show static SVG noise instead
+  if (prefersReducedMotion) {
+    return <StaticNoise />;
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 z-50 pointer-events-none"
+      style={{ opacity }}
+      aria-hidden="true"
+    />
+  );
+}
+```
+
+**Rules:**
+- Canvas updates at 15fps, not 60fps — grain does not need smooth animation and saves significant CPU
+- Opacity range 0.02–0.05 — anything higher looks like a broken TV
+- Always disable on `prefers-reduced-motion` and show static SVG fallback
+- `pointer-events-none` is mandatory — grain must not block interaction
+- `z-50` ensures grain renders above all content
+
+### 10. Aurora / Holographic Effects
+
+Multi-radial oklch gradient backgrounds with slow animation for aurora/northern lights effects, plus holographic shimmer borders.
+
+```css
+/* app/globals.css */
+@keyframes aurora {
+  0% {
+    background-position: 0% 50%, 100% 50%, 50% 100%;
+  }
+  33% {
+    background-position: 100% 0%, 0% 100%, 50% 0%;
+  }
+  66% {
+    background-position: 50% 100%, 100% 0%, 0% 50%;
+  }
+  100% {
+    background-position: 0% 50%, 100% 50%, 50% 100%;
+  }
+}
+
+@utility aurora-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at var(--aurora-x1, 20%) var(--aurora-y1, 30%),
+      oklch(0.70 0.25 160 / 0.4), transparent 70%),
+    radial-gradient(ellipse 60% 80% at var(--aurora-x2, 80%) var(--aurora-y2, 20%),
+      oklch(0.65 0.28 270 / 0.35), transparent 70%),
+    radial-gradient(ellipse 70% 50% at var(--aurora-x3, 50%) var(--aurora-y3, 80%),
+      oklch(0.60 0.22 330 / 0.3), transparent 70%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: aurora 18s ease-in-out infinite;
+}
+
+@keyframes holo-rotate {
+  from { --holo-angle: 0deg; }
+  to { --holo-angle: 360deg; }
+}
+
+@property --holo-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+```
+
+> **Browser support:** `@property` requires Chromium 85+, Safari 16.4+, Firefox 128+. For older browsers, the holographic border falls back to a static gradient (no rotation animation). The aurora background animation works in all modern browsers since it uses standard `@keyframes`.
+
+```tsx
+// components/aurora-background.tsx
+export function AuroraBackground({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-gray-950">
+      {/* Aurora gradient layer */}
+      <div className="aurora-bg absolute inset-0 -z-10" aria-hidden="true" />
+      {/* Soft noise overlay for texture */}
+      <div
+        className="absolute inset-0 -z-10 opacity-[0.02] pointer-events-none"
+        style={{
+          backgroundImage: "url('/noise.svg')",
+          backgroundRepeat: "repeat",
+        }}
+        aria-hidden="true"
+      />
+      {children}
+    </div>
+  );
+}
+
+// components/holographic-card.tsx
+"use client";
+
+export function HolographicCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-2xl p-px"
+      style={{
+        background: `conic-gradient(
+          from var(--holo-angle, 0deg),
+          oklch(0.70 0.25 0),
+          oklch(0.70 0.25 60),
+          oklch(0.70 0.25 120),
+          oklch(0.70 0.25 180),
+          oklch(0.70 0.25 240),
+          oklch(0.70 0.25 300),
+          oklch(0.70 0.25 360)
+        )`,
+        animation: "holo-rotate 4s linear infinite",
+      }}
+    >
+      <div className="rounded-[calc(1rem-1px)] bg-gray-950 p-6">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+
+**Rules:**
+- Aurora uses 3–4 radial-gradient layers with oklch high-chroma colors at different positions
+- Animation duration 15–20s — slow movement reads as ambient, fast looks chaotic
+- Holographic border uses `conic-gradient` rotating via `@property --holo-angle`
+- `p-px` wrapper trick creates a 1px gradient border around inner content
+- Always pair aurora backgrounds with noise texture for added depth
+- `@property` registration is required for animating CSS custom properties
+
+### 11. Blend Modes & Depth Layers
+
+CSS blend modes and a depth layering system for visual richness and dimension.
+
+```tsx
+/*
+ * Blend Mode Cheat Sheet:
+ *
+ * multiply    — darken: overlapping shadows, dark overlays on images
+ * screen      — lighten: light leaks, glow effects
+ * overlay     — contrast boost: text over images
+ * difference  — invert: cursor effects, artistic compositions
+ * color-dodge — intense highlights: neon glow
+ * soft-light  — subtle tint: color grading photos
+ */
+
+// Depth layering system — z-index + blur + opacity + scale for parallax depth
+export function DepthLayers() {
+  return (
+    <div className="relative h-[600px] overflow-hidden">
+      {/* Background layer — pushed back, blurred, dimmed, slightly scaled up */}
+      <div className="absolute inset-0 scale-110 blur-sm opacity-60 -z-10">
+        <img
+          src="/bg-mountains.jpg"
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      </div>
+
+      {/* Midground layer — subtle depth, slight scale */}
+      <div className="absolute inset-0 scale-105 opacity-80">
+        <img
+          src="/mid-trees.png"
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      </div>
+
+      {/* Foreground layer — sharp, full opacity, on top */}
+      <div className="relative z-10 flex items-center justify-center h-full">
+        <h1 className="text-5xl font-extrabold text-white drop-shadow-lg">
+          Foreground Content
+        </h1>
+      </div>
+    </div>
+  );
+}
+
+// Duotone image overlay — mix-blend-multiply with a color layer
+export function ImageOverlay({
+  src,
+  alt,
+  color = "bg-brand-500",
+}: {
+  src: string;
+  alt: string;
+  color?: string;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      <img src={src} alt={alt} className="h-full w-full object-cover" />
+      <div
+        className={`absolute inset-0 ${color} mix-blend-multiply opacity-60`}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
+// Text over image with blend mode for readability
+export function TextOverImage({
+  src,
+  alt,
+  children,
+}: {
+  src: string;
+  alt: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative isolate overflow-hidden rounded-xl">
+      <img
+        src={src}
+        alt={alt}
+        className="absolute inset-0 h-full w-full object-cover -z-10"
+      />
+      {/* Dark overlay for readability */}
+      <div
+        className="absolute inset-0 bg-gray-900/70 mix-blend-overlay -z-10"
+        aria-hidden="true"
+      />
+      <div className="relative z-10 p-8 text-white">{children}</div>
+    </div>
+  );
+}
+```
+
+**Rules:**
+- `multiply` darkens — best for color overlays on light images (duotone effect)
+- `screen` lightens — best for glow and light leak effects on dark backgrounds
+- `overlay` boosts contrast — use for text readability over images
+- `isolation: isolate` (Tailwind `isolate`) creates a new stacking context, preventing blend modes from leaking to parent elements
+- Depth layers use blur + opacity + scale to simulate distance: background (blurred, dim, scaled up), midground (slight opacity), foreground (sharp, full)
+- Always add `aria-hidden="true"` to decorative overlay divs
+- Duotone: use `mix-blend-multiply` with a brand color at 40–60% opacity
+
 ## Anti-pattern
 
 ```tsx
@@ -364,9 +708,165 @@ Nesting rule: outer radius > inner radius
 - [ ] Body text max width `max-w-prose` or `max-w-2xl`
 - [ ] All colors use semantic tokens or `@theme` variables, no hardcoded values
 
+## Advanced Patterns
+
+### Animated blob shapes (CSS-only)
+
+Morphing blob backgrounds using animated `border-radius` — no JS required.
+
+```css
+/* Add to globals.css */
+@keyframes blob-morph {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  50% { border-radius: 50% 60% 30% 70% / 40% 50% 60% 50%; }
+  75% { border-radius: 40% 60% 70% 30% / 60% 40% 30% 70%; }
+}
+```
+
+```tsx
+export function BlobBackground({ className }: { className?: string }) {
+  return (
+    <div className={cn("relative overflow-hidden", className)} aria-hidden="true">
+      <div
+        className="absolute -left-1/4 -top-1/4 h-[60%] w-[60%] bg-primary/20 blur-3xl"
+        style={{ animation: "blob-morph 8s ease-in-out infinite" }}
+      />
+      <div
+        className="absolute -bottom-1/4 -right-1/4 h-[50%] w-[50%] bg-accent/20 blur-3xl"
+        style={{ animation: "blob-morph 10s ease-in-out infinite reverse" }}
+      />
+      <div
+        className="absolute left-1/3 top-1/3 h-[40%] w-[40%] bg-primary/10 blur-3xl"
+        style={{ animation: "blob-morph 12s ease-in-out infinite 2s" }}
+      />
+    </div>
+  );
+}
+```
+
+### Animated clip-path shapes
+
+Clip-path transitions for image reveals, section dividers, and hover effects.
+
+```tsx
+export function ClipHoverCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "transition-[clip-path] duration-500 ease-out",
+        "clip-path-[polygon(0_0,100%_0,100%_100%,0_100%)]",
+        "hover:clip-path-[polygon(5%_5%,95%_0,100%_95%,0_100%)]",
+        className
+      )}
+      style={{
+        clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.clipPath =
+          "polygon(5% 5%, 95% 0%, 100% 95%, 0% 100%)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.clipPath =
+          "polygon(0 0, 100% 0, 100% 100%, 0 100%)";
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+```
+
+### Noise texture overlay (CSS-only)
+
+A subtle film grain using an SVG filter defined inline — no canvas needed.
+
+```tsx
+export function NoiseOverlay() {
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 opacity-[0.03]" aria-hidden="true">
+      <svg className="h-full w-full">
+        <filter id="noise-filter">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves={3} stitchTiles="stitch" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noise-filter)" />
+      </svg>
+    </div>
+  );
+}
+```
+
+### Glow button with animated border
+
+A button with a rotating gradient border — the premium SaaS CTA effect.
+
+```tsx
+export function GlowButton({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      className={cn(
+        "relative isolate rounded-xl px-6 py-3 font-medium text-white",
+        "before:absolute before:inset-0 before:-z-10 before:rounded-xl before:bg-gradient-to-r before:from-primary before:via-accent before:to-primary before:bg-[length:200%_100%] before:animate-[shimmer_3s_linear_infinite]",
+        "after:absolute after:inset-[1px] after:-z-10 after:rounded-[11px] after:bg-background",
+        className
+      )}
+    >
+      <span className="relative bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        {children}
+      </span>
+    </button>
+  );
+}
+
+// Add to globals.css:
+// @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+```
+
+### Stacked section divider
+
+A wavy or angled divider between sections that adds depth.
+
+```tsx
+export function WaveDivider({
+  flip = false,
+  color = "var(--color-background)",
+}: {
+  flip?: boolean;
+  color?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 1200 120"
+      preserveAspectRatio="none"
+      className={cn("h-16 w-full md:h-24", flip && "rotate-180")}
+      aria-hidden="true"
+    >
+      <path
+        d="M0,60 C200,120 400,0 600,60 C800,120 1000,0 1200,60 L1200,120 L0,120 Z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+```
+
 ## Composes With
 - `tailwind-v4` — design tokens defined in `@theme {}`
 - `dark-mode` — dark mode color flips and shadow adjustments
 - `shadcn` — shadcn component theming uses these tokens
 - `landing-patterns` — landing page sections use these visual patterns
 - `animation` — microinteractions enhance surfaces and elevation changes
+- `svg-canvas` — SVG filters, blob shapes, and generative patterns
+- `creative-scrolling` — scroll-driven visual reveals and parallax depth

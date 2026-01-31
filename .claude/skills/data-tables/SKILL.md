@@ -299,9 +299,242 @@ const users = await db.user.findMany({
 - [ ] Row selection with accessible checkboxes
 - [ ] Empty state shown when no data matches filters
 
+## Microinteractions & Visual Polish
+
+Static tables feel like spreadsheets. Polished tables feel like apps — rows animate in, hover states lift, sorting feels physical, and empty states delight.
+
+### Row stagger animation on load
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.03, type: "spring", stiffness: 400, damping: 25 },
+  }),
+};
+
+export function AnimatedTableBody({ rows }: { rows: Row[] }) {
+  return (
+    <TableBody>
+      {rows.map((row, i) => (
+        <motion.tr
+          key={row.id}
+          custom={i}
+          variants={rowVariants}
+          initial="hidden"
+          animate="visible"
+          className="group transition-colors hover:bg-muted/50"
+        >
+          {row.getVisibleCells().map((cell) => (
+            <TableCell key={cell.id}>
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </TableCell>
+          ))}
+        </motion.tr>
+      ))}
+    </TableBody>
+  );
+}
+```
+
+### Hover row lift effect
+```tsx
+// Add to TableRow for subtle depth on hover
+<TableRow
+  className={cn(
+    "transition-all duration-150",
+    "hover:bg-muted/50 hover:shadow-[0_2px_8px_-2px_oklch(0_0_0/0.08)]",
+    "hover:relative hover:z-10"
+  )}
+>
+```
+
+### Animated sort indicator
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+import { ArrowUp } from "lucide-react";
+
+function SortIcon({ direction }: { direction: false | "asc" | "desc" }) {
+  if (!direction) return null;
+
+  return (
+    <motion.span
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="ml-1 inline-flex"
+    >
+      <motion.span
+        animate={{ rotate: direction === "desc" ? 180 : 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        <ArrowUp className="h-3.5 w-3.5" />
+      </motion.span>
+    </motion.span>
+  );
+}
+
+// Usage in header
+<TableHead
+  onClick={header.column.getToggleSortingHandler()}
+  className="cursor-pointer select-none transition-colors hover:text-foreground"
+>
+  <span className="flex items-center">
+    {flexRender(header.column.columnDef.header, header.getContext())}
+    <SortIcon direction={header.column.getIsSorted()} />
+  </span>
+</TableHead>
+```
+
+### Loading skeleton during pagination
+```tsx
+"use client";
+
+function TableSkeleton({ columns, rows = 10 }: { columns: number; rows?: number }) {
+  return (
+    <TableBody>
+      {Array.from({ length: rows }).map((_, i) => (
+        <TableRow key={i}>
+          {Array.from({ length: columns }).map((_, j) => (
+            <TableCell key={j}>
+              <div
+                className="h-4 animate-pulse rounded bg-muted"
+                style={{
+                  width: `${60 + Math.random() * 30}%`,
+                  animationDelay: `${i * 50 + j * 100}ms`,
+                }}
+              />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </TableBody>
+  );
+}
+```
+
+### Animated bulk action bar
+```tsx
+"use client";
+
+import { motion, AnimatePresence } from "motion/react";
+
+export function BulkActionBar({
+  selectedCount,
+  onDelete,
+  onExport,
+}: {
+  selectedCount: number;
+  onDelete: () => void;
+  onExport: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {selectedCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: 10, height: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          className="flex items-center gap-3 rounded-lg border bg-primary/5 px-4 py-2"
+        >
+          <span className="text-sm font-medium">{selectedCount} selected</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={onExport}>Export</Button>
+            <Button size="sm" variant="destructive" onClick={onDelete}>Delete</Button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+```
+
+### Animated empty state
+```tsx
+"use client";
+
+import { motion } from "motion/react";
+import { SearchX } from "lucide-react";
+
+function EmptyState({ query }: { query?: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="flex flex-col items-center justify-center py-16 text-center"
+    >
+      <motion.div
+        initial={{ y: 10 }}
+        animate={{ y: [0, -4, 0] }}
+        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+      >
+        <SearchX className="h-12 w-12 text-muted-foreground/40" />
+      </motion.div>
+      <h3 className="mt-4 text-lg font-semibold">No results found</h3>
+      {query && (
+        <p className="mt-1 text-sm text-muted-foreground">
+          No items match &ldquo;{query}&rdquo;. Try a different search.
+        </p>
+      )}
+    </motion.div>
+  );
+}
+```
+
+### Row expand/collapse animation
+```tsx
+"use client";
+
+import { motion, AnimatePresence } from "motion/react";
+
+function ExpandableRow({ row, children }: { row: Row; children: React.ReactNode }) {
+  const isExpanded = row.getIsExpanded();
+
+  return (
+    <>
+      <TableRow
+        onClick={() => row.toggleExpanded()}
+        className="cursor-pointer transition-colors hover:bg-muted/50"
+      >
+        {row.getVisibleCells().map((cell) => (
+          <TableCell key={cell.id}>
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </TableCell>
+        ))}
+      </TableRow>
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.tr
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          >
+            <td colSpan={row.getVisibleCells().length} className="p-4 bg-muted/30">
+              {children}
+            </td>
+          </motion.tr>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+```
+
 ## Composes With
 - `shadcn` — Table, Checkbox, Button components for rendering
 - `react-client-components` — table interactivity needs "use client"
 - `state-management` — URL state with nuqs for pagination/sort
 - `nextjs-data` — server-side data fetching for table data
 - `react-suspense` — Suspense boundary around table loading
+- `virtualization` — virtualized rows for 500+ row tables
+- `animation` — Motion library for row stagger, sort indicators, expand/collapse
+- `loading-transitions` — skeleton states during data fetching

@@ -322,9 +322,140 @@ export function AdaptiveCard({ children }: { children: React.ReactNode }) {
 </div>
 ```
 
+### Advanced Patterns
+
+#### Smooth theme transition with color interpolation
+```tsx
+// Remove disableTransitionOnChange and add controlled transition
+// globals.css — transition only color properties (not layout)
+html.transitioning * {
+  transition: background-color 300ms ease, color 200ms ease,
+              border-color 200ms ease, box-shadow 300ms ease,
+              fill 200ms ease, stroke 200ms ease !important;
+}
+
+// ThemeToggle with transition class
+"use client";
+import { useTheme } from "next-themes";
+
+export function SmoothThemeToggle() {
+  const { setTheme, resolvedTheme } = useTheme();
+
+  function toggle() {
+    document.documentElement.classList.add("transitioning");
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+    setTimeout(() => {
+      document.documentElement.classList.remove("transitioning");
+    }, 350);
+  }
+
+  return (
+    <button onClick={toggle} className="relative h-9 w-9 rounded-full" aria-label="Toggle theme">
+      <Sun className="absolute inset-0 m-auto h-5 w-5 rotate-0 scale-100 transition-transform duration-300 dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute inset-0 m-auto h-5 w-5 rotate-90 scale-0 transition-transform duration-300 dark:rotate-0 dark:scale-100" />
+    </button>
+  );
+}
+```
+
+#### Shadow → border + glow elevation formula
+```css
+/* Light mode: shadow depth. Dark mode: border + inner highlight + glow */
+/* Level 1 — subtle */
+.card-l1 {
+  @apply shadow-sm;
+}
+.dark .card-l1 {
+  @apply shadow-none border border-white/[0.06] ring-1 ring-white/[0.03];
+}
+
+/* Level 2 — elevated */
+.card-l2 {
+  @apply shadow-md;
+}
+.dark .card-l2 {
+  @apply shadow-none border border-white/[0.08]
+         [box-shadow:inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_16px_rgba(0,0,0,0.4)];
+}
+
+/* Level 3 — prominent (modal, popover) */
+.card-l3 {
+  @apply shadow-xl;
+}
+.dark .card-l3 {
+  @apply shadow-none border border-white/[0.1]
+         [box-shadow:inset_0_1px_0_0_rgba(255,255,255,0.06),0_0_32px_rgba(0,0,0,0.5)];
+}
+```
+
+#### Glassmorphism dark mode adaptation
+```tsx
+// Light: subtle frosted glass. Dark: deeper tint with visible blur.
+export function GlassCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className={cn(
+      "rounded-2xl border p-6 backdrop-blur-xl",
+      // Light
+      "bg-white/60 border-white/40 shadow-lg",
+      // Dark — deeper tint, brighter border highlight
+      "dark:bg-white/[0.04] dark:border-white/[0.08]",
+      "dark:[box-shadow:inset_0_1px_0_0_rgba(255,255,255,0.05)]"
+    )}>
+      {children}
+    </div>
+  );
+}
+```
+
+#### Animated gradient accent that shifts with theme
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { useTheme } from "next-themes";
+
+export function ThemeGradientOrb() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <motion.div
+      className="pointer-events-none absolute -z-10 h-96 w-96 rounded-full blur-3xl"
+      animate={{
+        background: isDark
+          ? "radial-gradient(circle, oklch(0.5 0.2 270 / 0.3), transparent 70%)"
+          : "radial-gradient(circle, oklch(0.8 0.15 270 / 0.15), transparent 70%)",
+        scale: isDark ? 1.2 : 1,
+      }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
+    />
+  );
+}
+```
+
+#### Dark mode color psychology — desaturation for readability
+```css
+/* Dark mode: reduce saturation by ~15-20% for comfortable reading
+   Bright saturated colors on dark backgrounds cause eye strain */
+@theme {
+  --color-success: oklch(0.72 0.19 142);
+  --color-warning: oklch(0.75 0.18 85);
+  --color-error: oklch(0.65 0.22 27);
+}
+
+.dark {
+  /* Same hue, reduced chroma, slightly lower lightness */
+  --color-success: oklch(0.65 0.14 142);
+  --color-warning: oklch(0.68 0.13 85);
+  --color-error: oklch(0.60 0.16 27);
+}
+```
+
 ## Composes With
 - `tailwind-v4` — CSS variable theming in `@theme {}` and `.dark {}`
 - `shadcn` — shadcn components use semantic color tokens
 - `storybook` — test components in both themes
 - `react-client-components` — ThemeProvider and toggle are client components
 - `visual-design` — elevation and color systems adapt to dark mode
+- `charts` — chart colors must adapt via CSS custom properties in dark mode
+- `animation` — theme-aware motion (gradient orbs, transition timing)
+- `landing-patterns` — hero gradients and mesh backgrounds shift per theme

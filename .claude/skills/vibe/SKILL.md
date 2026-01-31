@@ -80,8 +80,8 @@ orchestrator for ambiguous or multi-concern requests.
 | `analytics` | analytics, tracking, posthog, vercel analytics, events, metrics |
 | `real-time` | real-time, live, SSE, websocket, streaming, notifications |
 | `image-optimization` | images, next/image, blur placeholder, og image, responsive |
-| `observability` | observability, tracing, health check, OpenTelemetry, circuit breaker |
-| `feature-flags` | feature flag, toggle, LaunchDarkly, Edge Config, A/B test |
+| `observability` | observability, tracing, health check, OpenTelemetry, circuit breaker, monitoring, uptime |
+| `feature-flags` | feature flag, toggle, LaunchDarkly, Edge Config, A/B test, rollout, experiment |
 | `compliance` | GDPR, cookie consent, data export, PII, right to delete, privacy |
 | `api-documentation` | OpenAPI, Swagger, API docs, spec, versioning |
 | `docker-dev` | docker, container, compose, dev environment, Dockerfile |
@@ -97,17 +97,24 @@ orchestrator for ambiguous or multi-concern requests.
 | `visual-regression` | visual regression, screenshot test, pixel diff |
 | `visual-design` | color harmony, elevation, shadow, gradient, glassmorphism, visual hierarchy, spacing rhythm, premium, polished, beautiful, stunning, aesthetic |
 | `landing-patterns` | hero section, landing page, bento grid, pricing table, social proof, CTA, conversion, marketing, homepage, above the fold |
-| `animation` | animation, motion, framer motion, transition, animate, page transition, microinteraction |
+| `animation` | animation, motion, framer motion, transition, animate, page transition, microinteraction, scroll animation, entrance animation |
 | `dark-mode` | dark mode, theme, light mode, theme switching, next-themes, color scheme |
 | `data-tables` | table, data table, TanStack Table, sorting, filtering, pagination, virtualization |
 | `advanced-form-ux` | wizard, multi-step form, auto-save, conditional fields, date picker, combobox |
-| `charts` | chart, graph, visualization, recharts, tremor, bar chart, line chart, dashboard chart |
-| `drag-drop` | drag and drop, sortable, kanban, reorder, dnd-kit, drag |
+| `charts` | chart, graph, visualization, recharts, tremor, bar chart, line chart, dashboard chart, metrics, KPI |
+| `drag-drop` | drag and drop, sortable, kanban, reorder, dnd-kit, drag, board |
 | `composition-patterns` | compound component, composition, context provider, boolean props, variant component, prop drilling |
 | `layout-patterns` | dashboard layout, sidebar, split view, master-detail, sticky header, breadcrumb |
 | `responsive-design` | responsive, mobile-first, container query, breakpoint, touch target, viewport |
 | `rich-text` | rich text, editor, tiptap, WYSIWYG, content editor, markdown editor |
 | `virtualization` | virtual list, infinite scroll, windowed, large list, scroll performance |
+| `creative-scrolling` | smooth scroll, Lenis, horizontal scroll, scroll snap, ScrollTrigger, velocity, scroll-linked, parallax layers |
+| `advanced-typography` | variable font, fluid type, kinetic text, text splitting, gradient text, outlined text, text effect, glitch text, scramble, typewriter |
+| `cursor-effects` | custom cursor, magnetic cursor, cursor trail, spotlight, blend mode cursor, cursor effect |
+| `webgl-3d` | Three.js, React Three Fiber, 3D, WebGL, shader, particle, 3D text, GLTF, post-processing |
+| `svg-canvas` | SVG morphing, line drawing, canvas particles, generative art, blob, SVG filter, SVG animation |
+| `loading-transitions` | preloader, View Transitions, route transition, reveal sequence, loading progress, page transition overlay |
+| `sound-design` | sound, audio, Howler, interaction sound, ambient audio, spatial audio, sound effect, mute toggle |
 
 ## Selection Examples
 
@@ -165,6 +172,27 @@ orchestrator for ambiguous or multi-concern requests.
 | "Polish the visual design" | `visual-design`, `shadcn`, `dark-mode` |
 | "Add glassmorphic cards" | `visual-design`, `shadcn` |
 | "Build a pricing page" | `landing-patterns`, `visual-design` |
+| "Add smooth scroll to my site" | `creative-scrolling`, `animation` |
+| "Build a horizontal scroll portfolio" | `creative-scrolling`, `landing-patterns` |
+| "Add scroll-triggered animations with GSAP" | `creative-scrolling`, `animation` |
+| "Set up variable fonts with fluid type" | `advanced-typography`, `tailwind-v4` |
+| "Add kinetic text animation to hero" | `advanced-typography`, `animation` |
+| "Create a text scramble effect" | `advanced-typography` |
+| "Add a custom cursor" | `cursor-effects`, `animation` |
+| "Make buttons magnetic on hover" | `cursor-effects`, `landing-patterns` |
+| "Add a spotlight follow effect" | `cursor-effects`, `visual-design` |
+| "Add 3D elements to my landing page" | `webgl-3d`, `landing-patterns` |
+| "Create a particle background" | `webgl-3d`, `performance` |
+| "Load a 3D model viewer" | `webgl-3d` |
+| "Add SVG line drawing animation" | `svg-canvas`, `animation` |
+| "Create morphing blob shapes" | `svg-canvas`, `visual-design` |
+| "Build a canvas particle system" | `svg-canvas`, `performance` |
+| "Add a preloader to my site" | `loading-transitions`, `animation` |
+| "Add page transition animations" | `loading-transitions`, `nextjs-routing` |
+| "Use the View Transitions API" | `loading-transitions`, `animation` |
+| "Add sound effects to interactions" | `sound-design`, `animation` |
+| "Add ambient background audio" | `sound-design` |
+| "Build an Awwwards-quality site" | `creative-scrolling`, `cursor-effects`, `visual-design` |
 
 ## Pattern
 
@@ -215,4 +243,4 @@ If a request genuinely spans 4+ concerns, break it into sequential steps.
 
 ## Composes With
 - `flow` — for predefined multi-step pipelines
-- All 67 other skills — vibe routes TO them
+- All 74 other skills — vibe routes TO them

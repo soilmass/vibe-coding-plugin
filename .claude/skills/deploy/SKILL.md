@@ -88,6 +88,110 @@ DATABASE_URL=""
 AUTH_SECRET=""
 ```
 
+### GitHub Actions CI/CD
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on: [push]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
+```
+
+For Vercel auto-deploy, connect the GitHub repo in the Vercel dashboard.
+The workflow above validates every push; Vercel handles the actual deployment on merge to `main`.
+
+### Docker standalone build
+```dockerfile
+# Multi-stage build — minimal production image
+FROM node:20-alpine AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "server.js"]
+```
+
+Requires `output: "standalone"` in `next.config.ts`. The final image contains only the
+minimal server — no `node_modules` or source files.
+
+### Health check endpoint
+```tsx
+// src/app/api/health/route.ts
+import { db } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    await db.$queryRaw`SELECT 1`;
+    return Response.json({ status: "healthy", timestamp: new Date().toISOString() });
+  } catch {
+    return Response.json({ status: "unhealthy" }, { status: 503 });
+  }
+}
+```
+
+Use this for Kubernetes liveness/readiness probes, Vercel health checks, or Docker
+`HEALTHCHECK` instructions. Keep the query minimal — `SELECT 1` is enough.
+
+### Preview deployments
+```jsonc
+// vercel.json — configure preview behavior
+{
+  "github": {
+    "autoAlias": true,
+    "silent": true
+  }
+}
+```
+
+Every PR gets a unique preview URL (`<project>-<hash>.vercel.app`).
+Use preview URLs for:
+- QA review before merging
+- Stakeholder sign-off
+- E2E tests against a real deployment
+
+```bash
+# Fetch the latest preview URL from Vercel CLI
+npx vercel ls --meta githubPrId=<PR_NUMBER>
+```
+
+Set preview-specific environment variables in the Vercel dashboard under
+**Settings → Environment Variables → Preview**.
+
 ## Anti-pattern
 
 ```bash
@@ -126,3 +230,4 @@ Never commit secrets. Never hardcode environment variables in config files.
 - `background-jobs` — ensure job workers deploy alongside the app
 - `email` — verify email service credentials in production environment
 - `logging` — production observability and error tracking setup
+- `observability` — health endpoints for Kubernetes/Vercel probes

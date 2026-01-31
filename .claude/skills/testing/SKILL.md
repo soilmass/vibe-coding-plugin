@@ -223,3 +223,6 @@ Test what the user sees and does, not internal implementation.
 - `turbo` — run tests across workspaces with Turborepo caching
 - `logging` — test that actions log expected events
 - `error-handling` — test error boundary rendering and recovery
+- `database-seeding` — test factories reuse seed patterns for fixtures
+- `storybook` — visual testing complements unit and E2E tests
+- `feature-flags` — test behavior under different flag states

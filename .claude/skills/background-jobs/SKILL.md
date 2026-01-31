@@ -142,3 +142,6 @@ export async function processOrder(orderId: string) {
 - `api-routes` — Inngest serve handler is a Next.js API route
 - `prisma` — database operations inside step functions
 - `deploy` — Inngest keys configured in production environment
+- `logging` — structured logging in async job handlers
+- `webhooks` — queue heavy webhook processing asynchronously
+- `notifications` — async notification delivery via job queue

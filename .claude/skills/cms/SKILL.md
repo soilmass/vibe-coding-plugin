@@ -311,6 +311,187 @@ code[data-line-numbers] > [data-line]::before {
 }
 ```
 
+### Premium Content UI Patterns
+
+#### Animated copy button with feedback
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
+
+export function AnimatedCopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <motion.button
+      onClick={handleCopy}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
+      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
+    >
+      <AnimatePresence mode="wait">
+        {copied ? (
+          <motion.div key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
+            <Check className="h-4 w-4 text-green-400" />
+          </motion.div>
+        ) : (
+          <motion.div key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+            <Copy className="h-4 w-4 text-zinc-400" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+}
+```
+
+#### Article content reveal on scroll
+```tsx
+"use client";
+import { motion, useInView } from "motion/react";
+import { useRef } from "react";
+
+export function ContentSection({ children }: { children: React.ReactNode }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      transition={{ type: "spring", stiffness: 200, damping: 25 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+```
+
+#### Reading progress bar
+```tsx
+"use client";
+import { motion, useScroll, useSpring } from "motion/react";
+
+export function ReadingProgress() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
+
+  return (
+    <motion.div
+      className="fixed inset-x-0 top-0 z-50 h-0.5 origin-left bg-primary"
+      style={{ scaleX }}
+    />
+  );
+}
+```
+
+#### Code block with hover glow
+```css
+/* Premium code block styling */
+[data-rehype-pretty-code-figure] pre {
+  position: relative;
+  overflow-x: auto;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s, box-shadow 0.3s;
+}
+
+[data-rehype-pretty-code-figure] pre:hover {
+  border-color: oklch(0.55 0.22 270 / 0.3);
+  box-shadow: 0 0 20px oklch(0.55 0.22 270 / 0.06);
+}
+
+/* Line highlight with smooth transition */
+[data-highlighted-line] {
+  background-color: oklch(0.55 0.22 270 / 0.08);
+  border-left: 2px solid oklch(0.55 0.22 270 / 0.5);
+  transition: background-color 0.2s;
+}
+```
+
+#### Blog post hero entrance
+```tsx
+"use client";
+import { motion } from "motion/react";
+
+export function ArticleHero({ title, excerpt, author, date }: {
+  title: string;
+  excerpt?: string;
+  author: { name: string; avatar?: string };
+  date: string;
+}) {
+  return (
+    <header className="mx-auto max-w-2xl space-y-6 pb-8">
+      <motion.h1
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        className="text-4xl font-bold tracking-tight"
+      >
+        {title}
+      </motion.h1>
+      {excerpt && (
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 25, delay: 0.1 }}
+          className="text-lg text-muted-foreground"
+        >
+          {excerpt}
+        </motion.p>
+      )}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex items-center gap-3"
+      >
+        {author.avatar && (
+          <img src={author.avatar} alt="" className="h-8 w-8 rounded-full" />
+        )}
+        <div className="text-sm">
+          <span className="font-medium">{author.name}</span>
+          <span className="mx-2 text-muted-foreground">·</span>
+          <time className="text-muted-foreground">{date}</time>
+        </div>
+      </motion.div>
+    </header>
+  );
+}
+```
+
+#### Draft mode indicator
+```tsx
+"use client";
+import { motion } from "motion/react";
+import { Eye } from "lucide-react";
+
+export function DraftBanner() {
+  return (
+    <motion.div
+      initial={{ y: -40 }}
+      animate={{ y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-amber-500 py-1.5 text-sm font-medium text-white"
+    >
+      <Eye className="h-4 w-4" />
+      Draft Preview Mode
+      <a href="/api/draft/disable" className="ml-2 rounded bg-white/20 px-2 py-0.5 text-xs hover:bg-white/30">
+        Exit
+      </a>
+    </motion.div>
+  );
+}
+```
+
 ## Composes With
 - `nextjs-data` — caching strategies for CMS content
 - `nextjs-metadata` — dynamic metadata from CMS fields
@@ -319,3 +500,6 @@ code[data-line-numbers] > [data-line]::before {
 - `react-server-components` — server-side MDX rendering
 - `seo-advanced` — CMS content SEO
 - `dark-mode` — code block themes adapt to light/dark mode
+- `animation` — content reveals, copy feedback, reading progress
+- `creative-scrolling` — scroll-linked content animations
+- `advanced-typography` — article typography hierarchy

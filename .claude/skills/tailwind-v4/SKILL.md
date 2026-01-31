@@ -335,6 +335,176 @@ Complete `@theme` block with all visual design tokens for a polished, production
 - Transition tokens ensure consistent animation feel across all components
 - Gradient tokens composable via CSS custom properties
 
+### Premium Animation & Interaction Utilities
+
+#### Microinteraction @utility patterns
+```css
+/* Hover lift — card hover feedback */
+@utility hover-lift {
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  &:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* Press scale — button press feedback */
+@utility press-scale {
+  transition: transform 0.15s var(--ease-spring);
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Focus glow — accessible focus ring with brand glow */
+@utility focus-glow {
+  &:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px oklch(0.55 0.22 270 / 0.15);
+  }
+}
+```
+
+#### Skeleton & loading utilities
+```css
+/* Shimmer skeleton */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-gray-100);
+  border-radius: var(--radius-md);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.4), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+.dark .skeleton {
+  background: var(--color-gray-800);
+  &::after {
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.05), transparent);
+  }
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* Pulse dot (connection status, notifications) */
+@utility pulse-dot {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: inherit;
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.8); opacity: 0; }
+}
+```
+
+#### Entry animation utilities
+```css
+/* Staggered fade-in for lists */
+@utility stagger-in {
+  animation: fadeSlideIn 0.3s var(--ease-spring) both;
+  animation-delay: calc(var(--stagger-index, 0) * 50ms);
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scale-in for modals/dialogs */
+@utility scale-in {
+  animation: scaleIn 0.2s var(--ease-spring);
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Slide-in from edge */
+@utility slide-in-right {
+  animation: slideInRight 0.3s var(--ease-spring);
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+```
+
+#### Reduced motion safety
+```css
+/* Global reduced-motion override — all custom animations respect preference */
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift,
+  .press-scale,
+  .stagger-in,
+  .scale-in,
+  .slide-in-right {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .skeleton::after {
+    animation: none;
+  }
+}
+```
+
+#### Interactive gradient border
+```css
+/* Gradient border on hover — cards, inputs */
+@utility gradient-border {
+  position: relative;
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gradient-accent);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  &:hover::before {
+    opacity: 1;
+  }
+}
+```
+
+**Rules:**
+- All `@utility` classes get purged correctly by Tailwind v4 — safe for production
+- Always pair animation utilities with `prefers-reduced-motion` override
+- Use `--ease-spring` token for consistent feel across all microinteractions
+- `--stagger-index` CSS variable set via `style={{ "--stagger-index": i }}` in JSX
+- Gradient border uses `mask-composite: exclude` for clean border effect
+
 ## Composes With
 - `visual-design` — color harmony, elevation, and spacing systems
 - `shadcn` — shadcn theme tokens live in `@theme {}`
@@ -342,3 +512,5 @@ Complete `@theme` block with all visual design tokens for a polished, production
 - `nextjs-metadata` — theme colors referenced in metadata
 - `responsive-design` — container queries for component-level responsiveness
 - `dark-mode` — CSS variable theming with `.dark` class
+- `animation` — JS animation complements CSS @utility animations
+- `loading-transitions` — skeleton and shimmer utilities

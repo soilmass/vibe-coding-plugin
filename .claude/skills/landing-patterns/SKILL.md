@@ -566,9 +566,206 @@ export function CTASection() {
 - [ ] Sections spaced with `py-16 md:py-24`
 - [ ] All sections centered with `max-w-7xl mx-auto`
 
+## Advanced Patterns
+
+### Infinite marquee / ticker
+
+Auto-scrolling text or logos that loop infinitely — a staple of modern marketing pages.
+
+```tsx
+import { cn } from "@/lib/utils";
+
+export function Marquee({
+  children,
+  speed = 30,
+  reverse = false,
+  className,
+}: {
+  children: React.ReactNode;
+  speed?: number;
+  reverse?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_10%,white_90%,transparent)]", className)}>
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-8",
+          reverse ? "animate-[marquee_var(--duration)_linear_infinite_reverse]" : "animate-[marquee_var(--duration)_linear_infinite]"
+        )}
+        style={{ "--duration": `${speed}s` } as React.CSSProperties}
+      >
+        {children}
+        {/* Duplicate for seamless loop */}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Add to globals.css:
+// @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+// Usage:
+// <Marquee speed={25}>
+//   {logos.map((logo) => <img key={logo.alt} src={logo.src} alt={logo.alt} className="h-8" />)}
+// </Marquee>
+```
+
+### Interactive demo section
+
+A draggable/interactive preview of the product embedded in the landing page.
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { motion } from "motion/react";
+import { cn } from "@/lib/utils";
+
+export function InteractiveDemo() {
+  const [activeTab, setActiveTab] = useState(0);
+  const tabs = ["Dashboard", "Analytics", "Settings"];
+
+  return (
+    <section className="mx-auto max-w-5xl px-4 py-24">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold md:text-4xl">See it in action</h2>
+        <p className="mt-3 text-muted-foreground">Click around — this is a real preview.</p>
+      </div>
+
+      <div className="mt-12 overflow-hidden rounded-2xl border shadow-2xl shadow-primary/5">
+        {/* Tab bar */}
+        <div className="flex border-b bg-muted/30">
+          {tabs.map((tab, i) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(i)}
+              className={cn(
+                "relative px-6 py-3 text-sm font-medium transition-colors",
+                activeTab === i ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab}
+              {activeTab === i && (
+                <motion.div
+                  layoutId="demo-tab-indicator"
+                  className="absolute inset-x-0 -bottom-px h-0.5 bg-primary"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Demo content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="aspect-video bg-background p-8"
+        >
+          <div className="grid h-full grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-lg bg-muted animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+```
+
+### Video hero with gradient overlay
+
+Background video with blend mode and gradient overlay for a cinematic hero.
+
+```tsx
+export function VideoHero({
+  videoSrc,
+  children,
+}: {
+  videoSrc: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 h-full w-full object-cover"
+      >
+        <source src={videoSrc} type="video/mp4" />
+      </video>
+
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20" />
+
+      {/* Content */}
+      <div className="relative z-10 mx-auto max-w-4xl px-4 text-center">
+        {children}
+      </div>
+    </section>
+  );
+}
+```
+
+### Scroll-triggered section reveals
+
+Every section fades in and slides up as it enters the viewport.
+
+```tsx
+"use client";
+
+import { motion, useInView } from "motion/react";
+import { useRef } from "react";
+
+export function RevealOnScroll({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-10% 0px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{
+        delay,
+        duration: 0.6,
+        ease: [0.21, 0.47, 0.32, 0.98],
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// Usage: wrap every landing section
+// <RevealOnScroll><HeroSection /></RevealOnScroll>
+// <RevealOnScroll delay={0.1}><FeaturesGrid /></RevealOnScroll>
+// <RevealOnScroll delay={0.2}><PricingTable /></RevealOnScroll>
+```
+
 ## Composes With
 - `visual-design` — color system, elevation, gradients used in all patterns
 - `animation` — scroll-triggered reveals, stagger entry, hover effects
 - `responsive-design` — mobile-first grid layouts
 - `shadcn` — Button, Input, Card components used in patterns
 - `seo-advanced` — structured data and metadata for marketing pages
+- `creative-scrolling` — scroll-driven reveals and parallax for landing sections
+- `advanced-typography` — hero headings with kinetic text and variable fonts
+- `cursor-effects` — premium cursor interactions on marketing pages
+- `sound-design` — ambient audio and interaction sounds for immersive landings

@@ -283,8 +283,137 @@ function Composer() {
 - [ ] `ref` as regular prop, not `forwardRef`
 - [ ] State decoupled from UI — provider is the only place that knows implementation
 
+### Animation Composition Patterns
+
+#### Motion profile variants — inject animation behavior via context
+```tsx
+"use client";
+import { createContext, use } from "react";
+import type { Transition } from "motion/react";
+
+type MotionProfile = "subtle" | "expressive" | "none";
+
+const profiles: Record<MotionProfile, {
+  spring: Transition;
+  enter: { initial: object; animate: object };
+}> = {
+  subtle: {
+    spring: { type: "spring", stiffness: 400, damping: 30 },
+    enter: { initial: { opacity: 0, y: 4 }, animate: { opacity: 1, y: 0 } },
+  },
+  expressive: {
+    spring: { type: "spring", stiffness: 300, damping: 20 },
+    enter: { initial: { opacity: 0, y: 16, scale: 0.95 }, animate: { opacity: 1, y: 0, scale: 1 } },
+  },
+  none: {
+    spring: { duration: 0 },
+    enter: { initial: {}, animate: {} },
+  },
+};
+
+const MotionProfileContext = createContext<MotionProfile>("subtle");
+
+export function MotionProfileProvider({ profile, children }: {
+  profile: MotionProfile;
+  children: React.ReactNode;
+}) {
+  // Respect user preference
+  const resolved = typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "none" : profile;
+
+  return (
+    <MotionProfileContext value={resolved}>
+      {children}
+    </MotionProfileContext>
+  );
+}
+
+export function useMotionProfile() {
+  return profiles[use(MotionProfileContext)];
+}
+```
+
+#### Compound component with shared layout animation
+```tsx
+"use client";
+import { motion, AnimatePresence } from "motion/react";
+
+// Tab compound component where indicator animates between tabs
+function TabList({ children }: { children: React.ReactNode }) {
+  return <div className="flex gap-1 border-b" role="tablist">{children}</div>;
+}
+
+function Tab({ value, active, onSelect, children }: {
+  value: string; active: boolean; onSelect: (v: string) => void; children: React.ReactNode;
+}) {
+  return (
+    <button
+      role="tab"
+      aria-selected={active}
+      onClick={() => onSelect(value)}
+      className="relative px-4 py-2 text-sm font-medium"
+    >
+      {children}
+      {active && (
+        <motion.div
+          layoutId="tab-indicator"
+          className="absolute inset-x-0 -bottom-px h-0.5 bg-primary"
+          transition={{ type: "spring", stiffness: 500, damping: 35 }}
+        />
+      )}
+    </button>
+  );
+}
+
+function TabContent({ children }: { children: React.ReactNode }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={children?.toString()}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.15 }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+export const Tabs = { List: TabList, Tab, Content: TabContent };
+```
+
+#### Visual variant tokens for design consistency
+```tsx
+// Size variants carry visual density (spacing, radius, font, shadow)
+const densityTokens = {
+  compact: { padding: "p-3", radius: "rounded-md", text: "text-sm", gap: "gap-2" },
+  default: { padding: "p-5", radius: "rounded-xl", text: "text-base", gap: "gap-4" },
+  spacious: { padding: "p-8", radius: "rounded-2xl", text: "text-lg", gap: "gap-6" },
+} as const;
+
+type Density = keyof typeof densityTokens;
+
+const DensityContext = createContext<Density>("default");
+
+// All children inherit density without passing props
+export function DensityProvider({ density, children }: {
+  density: Density; children: React.ReactNode;
+}) {
+  return <DensityContext value={density}>{children}</DensityContext>;
+}
+
+export function useDensity() {
+  return densityTokens[use(DensityContext)];
+}
+```
+
 ## Composes With
 - `react-client-components` — compound components are client components
 - `state-management` — context patterns align with state-management decisions
 - `shadcn` — shadcn components use compound patterns (Dialog, DropdownMenu)
 - `react-forms` — form composition with compound field components
+- `animation` — motion profile injection, shared layout animations
+- `visual-design` — density tokens control visual rhythm across components
