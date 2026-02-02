@@ -24,7 +24,7 @@ jobs:
 
       - name: Generate changelog
         id: changelog
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prevTag = '${{ steps.prev_tag.outputs.tag }}';
@@ -83,7 +83,7 @@ jobs:
             core.setOutput('body', changelog);
 
       - name: Create GitHub Release
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.repos.createRelease({
